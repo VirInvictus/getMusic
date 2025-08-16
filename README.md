@@ -7,7 +7,7 @@ This was created out of a necessity when I began managing my large (5000+ song) 
 
 Currently takes about 1 minute to write about 6000 songs.
 
-"""
+```
 getMusic.py — Two tools in one:
   1) Music library tree writer (tags + ratings)  ->  --library
   2) FLAC integrity checker (flac/ffmpeg)       ->  --checkFLAC
@@ -18,4 +18,4 @@ Examples:
 
   # Check FLACs under D:\Music and write problematic files to CSV
   python getMusic.py --checkFLAC --root "D:\Music" --output flac_errors.csv --workers 6 --prefer flac
-"""
+```
