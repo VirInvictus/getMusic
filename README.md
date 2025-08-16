@@ -22,4 +22,4 @@ Examples:
   python getMusic.py --checkFLAC --root "D:\Music" --output flac_errors.csv --workers 6 --prefer flac
 ```
 
-If this helped you out, consider donating to me: [click here](ko-fi.com/vrnvctss)
+If this helped you out, consider donating to me: [click here](https://ko-fi.com/vrnvctss)
