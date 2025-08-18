@@ -1,4 +1,4 @@
-Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (flac for sure, but I'm currently working on a new version that requires ffmpeg as well for testing MP3 files). And, of course, requires Python to be installed.
+Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the script will check for both). And, of course, requires Python to be installed.
 
 <p align="center">
   <img src="assets/logo.jpg" alt="getMusic.py logo" width="220">
