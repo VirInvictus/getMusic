@@ -1,4 +1,6 @@
-Requires mutagen to run.
+Requires mutagen to run. Requires FLAC and ffmpeg to be installed.
+
+(I installed flac via ```winget install flac``` in Powershell)
 
 Run:
 ```pip install mutagen```
