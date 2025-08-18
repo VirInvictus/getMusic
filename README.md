@@ -1,7 +1,7 @@
 Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the script will check for both). And, of course, requires Python to be installed. (I installed flac via ```winget install flac ffmpeg``` in Powershell)
 
 <p align="center">
-  <img src="assets/logo.jpg" alt="getMusic.py logo" width="220">
+  <img src="assets/logo.png" alt="getMusic.py logo" width="220">
 </p>
 
 Run:
