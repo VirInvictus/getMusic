@@ -1,7 +1,7 @@
 Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (flac for sure, but I'm currently working on a new version that requires ffmpeg as well for testing MP3 files). And, of course, requires Python to be installed.
 
 <p align="center">
-  <img src="assets/logo.png" alt="getMusic.py logo" width="220">
+  <img src="assets/logo.jpg" alt="getMusic.py logo" width="220">
 </p>
 
 (I installed flac via ```winget install flac ffmpeg``` in Powershell)
