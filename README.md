@@ -1,9 +1,9 @@
-Requires mutagen to run. Requires FLAC and ffmpeg to be installed (flac for sure, but I'm currently working on a new version that requires ffmpeg as well for testing MP3 files). And, of course, requires Python to be installed.
+Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (flac for sure, but I'm currently working on a new version that requires ffmpeg as well for testing MP3 files). And, of course, requires Python to be installed.
 
-(I installed flac via ```winget install flac``` in Powershell)
+(I installed flac via ```winget install flac ffmpeg``` in Powershell)
 
 Run:
-```pip install mutagen```
+```pip install mutagen tqdm```
 
 This was created out of a necessity when I began managing my large (5000+ song) libraries in foobar2000 rather than relying on MusicBee or MediaMonkey or iTunes. I use foobar2000's quicktagger component to rate each song. The library is in the format of **~\music\ARTIST NAME\ALBUM NAME** and the script relies on that structure to formulate the output .txt file.
 
