@@ -2,6 +2,7 @@
   <img src="assets/logo.png" alt="getMusic.py logo" width="220">
 </p>
 
+```getMusic.py``` is a lightweight CLI tool for music collectors — it builds a text library tree and checks FLAC/MP3 files for corruption.
 
 This was created out of a necessity when I began managing my large (5000+ song) libraries in foobar2000 rather than relying on MusicBee or MediaMonkey or iTunes. I use foobar2000's quicktagger component to rate each song. The library is in the format of **~\music\ARTIST NAME\ALBUM NAME** and the script relies on that structure to formulate the output .txt file.
 
@@ -24,6 +25,17 @@ Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the 
 ```pip install mutagen tqdm```
 
 ### Functions
+
+#### Build a clean text library
+```python getMusic.py --library```
+
+#### Check FLACs for corruption
+```python getMusic.py --testFLAC```
+
+#### Check MP3s for decode errors
+```python getMusic.py --testMP3```
+
+#### Help File
 ```python getMusic.py --help``` displays:
 ```
 usage: getMusic.py [-h] [--library | --testFLAC | --testMP3] [--root ROOT] [--output OUTPUT] [--workers WORKERS]
@@ -47,11 +59,6 @@ options:
   --ffmpeg FFMPEG       Path to ffmpeg (for --testMP3; otherwise uses PATH)
   --verbose             Verbose output; include OK rows (MP3 mode)
 ```
-
-```python getMusic.py --library``` creates a running .txt file that is both aesthetically appealing and organized (and easily analyzed by Google's Gemini Pro 2.5 and its 1m context units). My 5000 song library with ratings and full names creates a .txt sitting at about \~500kb, equalling about \~160-170k context tokens.
-
-```python getMusic.py --testFLAC``` searches the Music subfolders for all FLAC files and creates a .csv file with all the FLAC files with errors.
-```python getMusic.py --testMP3``` does the same for MP3s
 
 Running with no arguments provides a CLI-based menu.
 
