@@ -19,7 +19,5 @@ Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the 
 
 Running with no arguments provides a CLI-based menu.
 
-You do not need to specify the directory if the file is sitting in your music library. It will automatically check every subdirectory for both options with no arguments.
-
 #
 If this helped you out, consider donating to me: [click here](https://ko-fi.com/vrnvctss)
