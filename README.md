@@ -1,7 +1,3 @@
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
-[![Ko-fi](https://img.shields.io/badge/support-Ko--fi-ff5f5f?logo=kofi)](https://ko-fi.com/vrnvctss)
-
 <p align="center">
   <img src="assets/logo.png" alt="getMusic.py logo" width="220">
 </p>
@@ -69,3 +65,6 @@ Running with no arguments provides a CLI-based menu.
 ## Support
 If this project saved you time, consider [buying me a coffee](https://ko-fi.com/vrnvctss).
 
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)]()
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
+[![Ko-fi](https://img.shields.io/badge/support-Ko--fi-ff5f5f?logo=kofi)](https://ko-fi.com/vrnvctss)
