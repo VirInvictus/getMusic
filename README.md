@@ -24,7 +24,29 @@ Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the 
 ```pip install mutagen tqdm```
 
 ### Functions
-```python getMusic.py --help``` for console instructions.
+```python getMusic.py --help``` displays:
+```
+usage: getMusic.py [-h] [--library | --testFLAC | --testMP3] [--root ROOT] [--output OUTPUT] [--workers WORKERS]
+                   [--prefer {flac,ffmpeg}] [--quiet] [--only-errors | --no-only-errors] [--ffmpeg FFMPEG] [--verbose]
+
+Music library tree, FLAC integrity, and MP3 decode checker
+
+options:
+  -h, --help            show this help message and exit
+  --library             Generate library tree
+  --testFLAC            Verify FLAC files and report failures
+  --testMP3             Verify MP3 files and report decode errors/warnings
+  --root ROOT           Root directory to scan (default: current dir)
+  --output OUTPUT       Output path (library: text, FLAC/MP3: CSV)
+  --workers WORKERS     Parallel workers for FLAC/MP3 (default: 4)
+  --prefer {flac,ffmpeg}
+                        Preferred tester if both available (for --testFLAC)
+  --quiet               Reduce console output and hide progress bars (all modes)
+  --only-errors, --no-only-errors
+                        Write only rows with status != ok (MP3 mode; default: true)
+  --ffmpeg FFMPEG       Path to ffmpeg (for --testMP3; otherwise uses PATH)
+  --verbose             Verbose output; include OK rows (MP3 mode)
+```
 
 ```python getMusic.py --library``` creates a running .txt file that is both aesthetically appealing and organized (and easily analyzed by Google's Gemini Pro 2.5 and its 1m context units). My 5000 song library with ratings and full names creates a .txt sitting at about \~500kb, equalling about \~160-170k context tokens.
 
