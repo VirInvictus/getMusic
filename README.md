@@ -33,5 +33,6 @@ Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the 
 
 Running with no arguments provides a CLI-based menu.
 
-#
-If this helped you out, consider donating to me: [click here](https://ko-fi.com/vrnvctss)
+## Support
+If this project saved you time, consider [buying me a coffee](https://ko-fi.com/vrnvctss).
+
