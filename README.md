@@ -8,14 +8,15 @@ This was created out of a necessity when I began managing my large (5000+ song) 
 ### Sample output in library
 
 ```
-  ├── ALBUM: Living Room Songs
-      ├── SONG: 01. Ólafur Arnalds — Fyrsta (flac) [★★★★★ 5.0/5]
-      ├── SONG: 02. Ólafur Arnalds — Near Light (flac) [★★★★★ 5.0/5]
-      ├── SONG: 03. Ólafur Arnalds — Film Credits (flac) [★★★★★ 5.0/5]
-      ├── SONG: 04. Ólafur Arnalds — Tomorrow’s Song (flac) [★★★★★ 5.0/5]
-      ├── SONG: 05. Ólafur Arnalds — Ágúst (flac) [★★★★★ 5.0/5]
-      ├── SONG: 06. Ólafur Arnalds — Lag fyrir Ömmu (flac) [★★★★★ 5.0/5]
-      └── SONG: 07. Ólafur Arnalds — This Place Is a Shelter (flac) [★★★★★ 5.0/5]
+ARTIST: Ólafur Arnalds
+  ├── ALBUM: Found Songs
+      ├── SONG: 01. Ólafur Arnalds — Erla's Waltz (flac) [★★★★★ 5.0/5]
+      ├── SONG: 02. Ólafur Arnalds — Raein (flac) [★★★★★ 5.0/5]
+      ├── SONG: 03. Ólafur Arnalds — Romance (flac) [★★★★★ 5.0/5]
+      ├── SONG: 04. Ólafur Arnalds — Allt varð hljótt (flac) [★★★★★ 5.0/5]
+      ├── SONG: 05. Ólafur Arnalds — Lost Song (flac) [★★★★★ 5.0/5]
+      ├── SONG: 06. Ólafur Arnalds — Faun (flac) [★★★★★ 5.0/5]
+      └── SONG: 07. Ólafur Arnalds — Ljósið (flac) [★★★★★ 5.0/5]
 ```
 
 ### Requirements
