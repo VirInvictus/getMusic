@@ -5,6 +5,19 @@
 
 This was created out of a necessity when I began managing my large (5000+ song) libraries in foobar2000 rather than relying on MusicBee or MediaMonkey or iTunes. I use foobar2000's quicktagger component to rate each song. The library is in the format of **~\music\ARTIST NAME\ALBUM NAME** and the script relies on that structure to formulate the output .txt file.
 
+### Sample output in library
+
+```
+  ├── ALBUM: Living Room Songs
+      ├── SONG: 01. Ólafur Arnalds — Fyrsta (flac) [★★★★★ 5.0/5]
+      ├── SONG: 02. Ólafur Arnalds — Near Light (flac) [★★★★★ 5.0/5]
+      ├── SONG: 03. Ólafur Arnalds — Film Credits (flac) [★★★★★ 5.0/5]
+      ├── SONG: 04. Ólafur Arnalds — Tomorrow’s Song (flac) [★★★★★ 5.0/5]
+      ├── SONG: 05. Ólafur Arnalds — Ágúst (flac) [★★★★★ 5.0/5]
+      ├── SONG: 06. Ólafur Arnalds — Lag fyrir Ömmu (flac) [★★★★★ 5.0/5]
+      └── SONG: 07. Ólafur Arnalds — This Place Is a Shelter (flac) [★★★★★ 5.0/5]
+```
+
 ### Requirements
 Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the script will check for both). And, of course, requires Python to be installed. (I installed flac via ```winget install flac ffmpeg``` in Powershell). The Python libraries can be installed by simply running:
 ```pip install mutagen tqdm```
