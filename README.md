@@ -1,5 +1,3 @@
-**Update**: I recently added an .exe build for Windows computers. Flac and ffmpeg are both still required to be installed. Bless.
-
 <p align="center">
   <img src="assets/logo.png" alt="getMusic.py logo" width="220">
 </p>
