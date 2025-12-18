@@ -1,3 +1,4 @@
+UPDATE 12/13/2025: Added Opus support in the library. Will look into error-checking for Opus.
 <p align="center">
   <img src="assets/logo.png" alt="getMusic.py logo" width="220">
 </p>
