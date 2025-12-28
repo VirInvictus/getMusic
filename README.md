@@ -1,7 +1,7 @@
 UPDATE 12/26/2025: Added Genre tag to library tree.  
 UPDATE 12/13/2025: Added Opus support in the library. Will look into error-checking for Opus.
 <p align="center">
-  <img src="assets/logo.png" alt="getMusic.py logo" width="320">
+  <img src="assets/logo.png" alt="getMusic.py logo" width="420">
 </p>
 
 ```getMusic.py``` is a lightweight CLI tool for music collectors — it builds a text library tree and checks FLAC/MP3 files for corruption.
