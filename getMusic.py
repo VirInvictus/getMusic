@@ -363,12 +363,22 @@ def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = F
                 for i, album in enumerate(albums):
                     album_path = os.path.join(artist_path, album)
                     connector = "└──" if i == len(albums) - 1 else "├──"
-                    f.write(f"  {connector} ALBUM: {album}\n")
 
+                    # SCAN SONGS FIRST (Moved up so we can get metadata for the Album line)
                     songs = sorted([
                         s for s in os.listdir(album_path)
                         if os.path.splitext(s)[1].lower() in AUDIO_EXTENSIONS
                     ])
+
+                    # Get Genre from the first song (if available)
+                    genre_str = ""
+                    if songs:
+                        first_song_path = os.path.join(album_path, songs[0])
+                        g = get_genre(first_song_path)
+                        if g:
+                            genre_str = f" ({g})"
+
+                    f.write(f"  {connector} ALBUM: {album}{genre_str}\n")
 
                     if not songs:
                         f.write("      └── [No Audio Files Found]\n")
@@ -843,6 +853,48 @@ def _prompt_int(label: str, default: int) -> int:
     except ValueError:
         return default
 
+def get_genre(file_path: str) -> Optional[str]:
+    """Extracts the genre from the audio file tags."""
+    if not HAVE_MUTAGEN_BASE:
+        return None
+    try:
+        # 1. Try generic/easy access first (handles most formats)
+        try:
+            easy = MutagenFile(file_path, easy=True)
+            if easy and easy.tags and 'genre' in easy.tags:
+                return _first_text(easy.tags['genre'])
+        except Exception:
+            pass
+
+        # 2. Fallback to manual tag inspection
+        audio = MutagenFile(file_path)
+        if not audio:
+            return None
+
+        tags = getattr(audio, 'tags', {}) or {}
+
+        # ID3 (MP3)
+        if hasattr(tags, 'getall'):
+            tcon = tags.getall('TCON') # Standard genre frame
+            if tcon:
+                return _first_text(tcon[0])
+
+        # Dictionary-based tags (FLAC, Vorbis, MP4, ASF)
+        # We search keys case-insensitively
+        for k, v in tags.items():
+            k_lower = str(k).lower()
+            if k_lower == 'genre':      # FLAC/Vorbis
+                return _first_text(v)
+            if k_lower == '\xa9gen':    # MP4/M4A standard
+                return _first_text(v)
+            if k_lower == 'gnre':       # MP4/M4A specific
+                return _first_text(v)
+            if k_lower == 'wm/genre':   # WMA/ASF
+                return _first_text(v)
+
+    except Exception:
+        pass
+    return None
 
 def interactive_menu() -> int:
     while True:
