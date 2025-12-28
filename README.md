@@ -11,7 +11,7 @@ This was created out of a necessity when I began managing my large (5000+ song) 
 
 ```
 ARTIST: Ólafur Arnalds
-  ├── ALBUM: Found Songs
+  ├── ALBUM: Found Songs (Neo-Classical)
       ├── SONG: 01. Ólafur Arnalds — Erla's Waltz (flac) [★★★★★ 5.0/5]
       ├── SONG: 02. Ólafur Arnalds — Raein (flac) [★★★★★ 5.0/5]
       ├── SONG: 03. Ólafur Arnalds — Romance (flac) [★★★★★ 5.0/5]
