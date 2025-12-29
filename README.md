@@ -8,6 +8,8 @@ UPDATE 12/13/2025: Added Opus support in the library. Will look into error-check
 
 This was created out of a necessity when I began managing my large (5000+ song) libraries in foobar2000 rather than relying on MusicBee or MediaMonkey or iTunes. I use foobar2000's quicktagger component to rate each song. The library is in the format of **~\music\ARTIST NAME\ALBUM NAME** and the script relies on that structure to formulate the output .txt file.
 
+getMusic.py assumes that you manage your metadata with intent. If your genre tags are messy, my suggestion is to avoid using genre tags in the library tree, otherwise it could quickly become unwieldy. In regards to the rating, I use foo_quicktag and a handful of keyboard shortcuts to set %rating% between 1 and 5. In a future update, I will toggle the rating to be shown at all in the library tree builder.
+
 ### Sample output in library
 
 ```
