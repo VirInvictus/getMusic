@@ -4,18 +4,18 @@
 Merged tool: Music library tree + FLAC/Opus integrity checker + MP3 decode checker.
 
 Usage:
-  # 1) Build a text tree of your music library (default)
-  python get_music.py --library --root "." --output music_library.txt
+# 1) Build a text tree of your music library (default)
+python get_music.py --library --root "." --output music_library.txt --genres
 
-  # 2) Verify FLAC files and write failures to CSV
-  python get_music.py --testFLAC --root "." --output flac_errors.csv --workers 4
+# 2) Verify FLAC files and write failures to CSV
+python get_music.py --testFLAC --root "." --output flac_errors.csv --workers 4
 
-  # 3) Verify MP3s by trying to decode with FFmpeg
-  python get_music.py --testMP3 --root "." --output mp3_scan_results.csv --workers 4 --only-errors
+# 3) Verify MP3s by trying to decode with FFmpeg
+python get_music.py --testMP3 --root "." --output mp3_scan_results.csv --workers 4 --only-errors
 
 Notes:
-  - Supports: .mp3, .flac, .ogg, .opus, .m4a, .wav, .wma, .aac
-  - Opus ratings are extracted from Vorbis comments (RATING, SCORE, STARS).
+- Supports: .mp3, .flac, .ogg, .opus, .m4a, .wav, .wma, .aac
+- Opus ratings are extracted from Vorbis comments (RATING, SCORE, STARS).
 """
 
 from __future__ import annotations
@@ -332,7 +332,7 @@ def get_rating(file_path: str) -> Optional[float]:
         return None
 
 
-def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = False) -> None:
+def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = False, show_genre: bool = False) -> None:
     root_dir = os.path.abspath(root_dir)
     total_files = count_audio_files(root_dir)
     if not quiet:
@@ -370,9 +370,9 @@ def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = F
                         if os.path.splitext(s)[1].lower() in AUDIO_EXTENSIONS
                     ])
 
-                    # Get Genre from the first song (if available)
+                    # Get Genre from the first song (if available AND requested)
                     genre_str = ""
-                    if songs:
+                    if show_genre and songs:
                         first_song_path = os.path.join(album_path, songs[0])
                         g = get_genre(first_song_path)
                         if g:
@@ -723,14 +723,14 @@ def _close_writer(w: csv.DictWriter) -> None:
 
 
 def run_mp3_mode(
-    root: str,
-    output: str,
-    workers: int,
-    ffmpeg: Optional[str],
-    *,
-    only_errors: bool,
-    verbose: bool,
-    quiet: bool,
+        root: str,
+        output: str,
+        workers: int,
+        ffmpeg: Optional[str],
+        *,
+        only_errors: bool,
+        verbose: bool,
+        quiet: bool,
 ) -> int:
     paths = [Path(os.path.abspath(root))]
     ffmpeg_path = _find_ffmpeg(ffmpeg)
@@ -822,6 +822,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--prefer", choices=["flac", "ffmpeg"], default="flac", help="Preferred tool (FLAC mode)")
     p.add_argument("--quiet", action="store_true", help="Minimize output")
 
+    # NEW: Toggle for Genres
+    p.add_argument("--genres", action="store_true", help="Include album genres in library tree")
+
     # MP3 specific
     try:
         BooleanFlag = argparse.BooleanOptionalAction  # py>=3.9
@@ -911,7 +914,11 @@ def interactive_menu() -> int:
         if choice in ("1", "l", "lib"):
             root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
             output = _prompt_str("Output file", DEFAULT_LIBRARY_OUTPUT) or DEFAULT_LIBRARY_OUTPUT
-            write_music_library_tree(root, output, quiet=False)
+
+            # ASK FOR GENRES
+            show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
+
+            write_music_library_tree(root, output, quiet=False, show_genre=show_g)
             print(f"\nMusic library written to {output}")
         elif choice in ("2", "t", "f", "flac"):
             root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
@@ -943,7 +950,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.library:
             root = os.path.abspath(args.root)
             output = args.output or DEFAULT_LIBRARY_OUTPUT
-            write_music_library_tree(root, output, quiet=args.quiet)
+            write_music_library_tree(root, output, quiet=args.quiet, show_genre=args.genres)
             return 0
         if args.testFLAC:
             root = os.path.abspath(args.root)
