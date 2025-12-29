@@ -1,5 +1,6 @@
+UPDATE 12/28/2025: Added toggle to genre.
 UPDATE 12/26/2025: Added Genre tag to library tree.  
-UPDATE 12/13/2025: Added Opus support in the library. Will look into error-checking for Opus.
+UPDATE 12/13/2025: Added Opus support in the library. <strike>Will look into error-checking for Opus.</strike> That's beyond my skills.
 <p align="center">
   <img src="assets/logo.png" alt="getMusic.py logo" width="420">
 </p>
