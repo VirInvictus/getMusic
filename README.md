@@ -1,4 +1,4 @@
-**UPDATE** 01/04/2025: Added a python script to extract artwork out of Opus files.  
+**UPDATE** 01/04/2025: Added a python script to extract artwork out of Opus / MP3 files.  
 **UPDATE** 12/28/2025: Added toggle to genre.  
 **UPDATE** 12/26/2025: Added Genre tag to library tree.  
 **UPDATE** 12/13/2025: Added Opus support in the library. <strike>Will look into error-checking for Opus.</strike> That's beyond my skills.
