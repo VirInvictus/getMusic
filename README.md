@@ -1,20 +1,26 @@
-**UPDATE** *01/04/2025*:  
-Added a python script to extract artwork out of Opus / MP3 files. Currently, to run the script, place it in your ~/Music folder and then run it via ```python3 extract_FILETYPE_art.py``` and it will add a cover.jpg in every music folder (only one per filetype in folder to avoid excess compute power). Will be folded into GetMusic.py on a later date.  
-  
-**UPDATE** 12/28/2025: Added toggle to genre.  
-**UPDATE** 12/26/2025: Added Genre tag to library tree.  
-**UPDATE** 12/13/2025: Added Opus support in the library. <strike>Will look into error-checking for Opus.</strike> That's beyond my skills.
 <p align="center">
-  <img src="assets/logo.png" alt="getMusic.py logo" width="420">
+  <img src="assets/logo.png" alt="getMusic.py" width="420">
 </p>
 
-```getMusic.py``` is a lightweight CLI tool for music collectors — it builds a text library tree and checks FLAC/MP3 files for corruption.
+<p align="center">
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+  <a href="https://ko-fi.com/vrnvctss"><img src="https://img.shields.io/badge/support-Ko--fi-ff5f5f?logo=kofi" alt="Ko-fi"></a>
+</p>
 
-This was created out of a necessity when I began managing my large (5000+ song) libraries in foobar2000 rather than relying on MusicBee or MediaMonkey or iTunes. I use foobar2000's quicktagger component to rate each song. The library is in the format of **~\music\ARTIST NAME\ALBUM NAME** and the script relies on that structure to formulate the output .txt file.
+A CLI toolkit for music collectors who manage their own libraries. Builds text-based library trees, verifies file integrity across formats, extracts and audits cover art, detects duplicates, and reports incomplete metadata — all from a single script.
 
-getMusic.py assumes that you manage your metadata with intent. If your genre tags are messy, my suggestion is to avoid using genre tags in the library tree, otherwise it could quickly become unwieldy. In regards to the rating, I use foo_quicktag and a handful of keyboard shortcuts to set %rating% between 1 and 5. In a future update, I will toggle the rating to be shown at all in the library tree builder.
+## Why this exists
 
-### Sample output in library
+If you manage a large library (5000+ songs) in something like foobar2000 instead of relying on MusicBee, MediaMonkey, or iTunes, you eventually need tools that work the way your library is actually structured. This script expects the standard collector layout:
+
+```
+~/Music/ARTIST NAME/ALBUM NAME/01 - Track.flac
+```
+
+It reads tags directly via [mutagen](https://mutagen.readthedocs.io/) rather than depending on any particular player's database. Ratings are pulled from standard tag fields (POPM, TXXX, Vorbis comments) — I use foobar2000's `foo_quicktag` component with keyboard shortcuts to set `%rating%` between 1 and 5, but any tagger that writes to standard fields will work.
+
+## Sample output
 
 ```
 ARTIST: Ólafur Arnalds
@@ -28,51 +34,122 @@ ARTIST: Ólafur Arnalds
       └── SONG: 07. Ólafur Arnalds — Ljósið (flac) [★★★★★ 5.0/5]
 ```
 
-### Requirements
-Requires mutagen and tqdm to run. Requires FLAC and ffmpeg to be installed (the script will check for both). And, of course, requires Python to be installed. (I installed flac via ```winget install flac ffmpeg``` in Powershell). The Python libraries can be installed by simply running:
-```pip install mutagen tqdm```
+Genre tags are optional (`--genres`). If your genre metadata is inconsistent, leave them off — the tree gets unwieldy fast.
 
-### Functions
+## Features
 
-#### Build a clean text library
-```python getMusic.py --library```
+| Mode | Flag | Description |
+|------|------|-------------|
+| **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
+| **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, outputs failures to CSV |
+| **MP3 integrity** | `--testMP3` | Decodes MP3 files through FFmpeg, reports errors and warnings to CSV |
+| **Opus integrity** | `--testOpus` | Decodes Opus files through FFmpeg, reports errors and warnings to CSV |
+| **Cover art extraction** | `--extractArt` | Extracts embedded art to `cover.jpg` with format priority ranking |
+| **Missing art report** | `--missingArt` | Lists directories with no cover art (folder or embedded) to CSV |
+| **Duplicate detection** | `--duplicates` | Finds same artist+album appearing across multiple directories/formats |
+| **Tag audit** | `--auditTags` | Reports files missing title, artist, track number, or genre to CSV |
 
-#### Check FLACs for corruption
-```python getMusic.py --testFLAC```
+Running with no arguments launches an interactive menu.
 
-#### Check MP3s for decode errors
-```python getMusic.py --testMP3```
+## Requirements
 
-#### Help File
-```python getMusic.py --help``` displays:
+**Python packages:**
+
 ```
-usage: getMusic.py [-h] [--library | --testFLAC | --testMP3] [--root ROOT] [--output OUTPUT] [--workers WORKERS]
-                   [--prefer {flac,ffmpeg}] [--quiet] [--only-errors | --no-only-errors] [--ffmpeg FFMPEG] [--verbose]
+pip install mutagen tqdm
+```
 
-Music library tree, FLAC integrity, and MP3 decode checker
+`tqdm` is optional — the script falls back to a built-in progress bar if it's not installed.
+
+**System tools (integrity modes):**
+
+- [`flac`](https://xiph.org/flac/) — used by `--testFLAC` (preferred)
+- [`ffmpeg`](https://ffmpeg.org/) — used by `--testMP3`, `--testOpus`, and as a fallback for `--testFLAC`
+
+On Windows: `winget install flac ffmpeg`
+On Fedora/RHEL: `sudo dnf install flac ffmpeg-free`
+On Debian/Ubuntu: `sudo apt install flac ffmpeg`
+
+## Usage
+
+```bash
+# Build a library tree with genre tags
+python getMusic.py --library --root ~/Music --output library.txt --genres
+
+# Verify FLAC integrity (4 parallel workers)
+python getMusic.py --testFLAC --root ~/Music --output flac_errors.csv --workers 4
+
+# Verify MP3s for decode errors
+python getMusic.py --testMP3 --root ~/Music --output mp3_errors.csv --workers 4
+
+# Verify Opus files for decode errors
+python getMusic.py --testOpus --root ~/Music --output opus_errors.csv --workers 4
+
+# Extract cover art (FLAC > Opus > M4A > MP3 priority)
+python getMusic.py --extractArt --root ~/Music
+
+# Preview art extraction without writing files
+python getMusic.py --extractArt --root ~/Music --dry-run
+
+# Report directories missing cover art
+python getMusic.py --missingArt --root ~/Music --output missing_art.csv
+
+# Find duplicate albums across formats
+python getMusic.py --duplicates --root ~/Music --output duplicates.csv
+
+# Audit tags for missing metadata
+python getMusic.py --auditTags --root ~/Music --output tag_audit.csv
+```
+
+## Cover art extraction
+
+The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `extract_mp3_art.py` scripts. Key improvements:
+
+- **Format priority** — when a directory contains multiple audio formats, art is extracted from the highest-quality source: FLAC → Opus/OGG → M4A → MP3.
+- **Case-insensitive detection** — checks for existing cover files (`cover.jpg`, `folder.jpg`, `front.jpg`, `album.jpg`, and their `.jpeg`/`.png` variants) case-insensitively. No more `cover.jpg` / `Cover.jpg` collisions.
+- **Front cover preference** — within each format, prefers the "Front Cover" picture type over generic embedded images.
+- **Four format support** — handles FLAC pictures, Opus/OGG `METADATA_BLOCK_PICTURE`, M4A `covr` atoms, and MP3 `APIC` frames.
+
+## Supported formats
+
+`.mp3` · `.flac` · `.ogg` · `.opus` · `.m4a` · `.wav` · `.wma` · `.aac`
+
+## Full help output
+
+```
+usage: getMusic.py [-h]
+                   [--library | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags]
+                   [--root ROOT] [--output OUTPUT] [--workers WORKERS]
+                   [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]
+                   [--only-errors | --no-only-errors] [--ffmpeg FFMPEG]
+                   [--verbose]
+
+Music library toolkit: tree, integrity, art, duplicates, tag audit
 
 options:
   -h, --help            show this help message and exit
   --library             Generate library tree
-  --testFLAC            Verify FLAC files and report failures
-  --testMP3             Verify MP3 files and report decode errors/warnings
-  --root ROOT           Root directory to scan (default: current dir)
-  --output OUTPUT       Output path (library: text, FLAC/MP3: CSV)
-  --workers WORKERS     Parallel workers for FLAC/MP3 (default: 4)
+  --testFLAC            Verify FLAC files
+  --testMP3             Verify MP3 files
+  --testOpus            Verify Opus files via FFmpeg decode
+  --extractArt          Extract embedded cover art to folder
+  --missingArt          Report directories missing cover art
+  --duplicates          Detect duplicate artist+album across formats
+  --auditTags           Report files with incomplete tags
+  --root ROOT           Root directory (default: current)
+  --output OUTPUT       Output path
+  --workers WORKERS     Parallel workers (integrity modes)
   --prefer {flac,ffmpeg}
-                        Preferred tester if both available (for --testFLAC)
-  --quiet               Reduce console output and hide progress bars (all modes)
+                        Preferred tool (FLAC mode)
+  --quiet               Minimize output
+  --genres              Include album genres in library tree
+  --dry-run             Preview changes without writing (extractArt)
   --only-errors, --no-only-errors
-                        Write only rows with status != ok (MP3 mode; default: true)
-  --ffmpeg FFMPEG       Path to ffmpeg (for --testMP3; otherwise uses PATH)
-  --verbose             Verbose output; include OK rows (MP3 mode)
+                        Write only errors/warns (MP3/Opus modes)
+  --ffmpeg FFMPEG       Path to ffmpeg
+  --verbose             Verbose output
 ```
 
-Running with no arguments provides a CLI-based menu.
-
 ## Support
-If this project saved you time, consider [buying me a coffee](https://ko-fi.com/vrnvctss).
 
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)]()
-[![Ko-fi](https://img.shields.io/badge/support-Ko--fi-ff5f5f?logo=kofi)](https://ko-fi.com/vrnvctss)
+If this saved you time, consider [buying me a coffee](https://ko-fi.com/vrnvctss).
