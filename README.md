@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="getMusic.py" width="420">
+  <img src="logo.svg" alt="getMusic.py" width="420">
 </p>
 
 <p align="center">
