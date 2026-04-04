@@ -1,6 +1,6 @@
 # getMusic.py — Patch Notes
 
-**Date:** 2026-04-04
+# **Date:** 2026-04-04
 
 ---
 
@@ -76,3 +76,33 @@ straightforward `open()` calls. No more leaked handles, no more
 ## Interactive Menu
 
 All prompts updated from "CSV output file" to "Output file".
+
+**Date:** 2026-03-15
+
+getMusic.py is now a single unified toolkit. The standalone `extract_opus_art.py` 
+and `extract_mp3_art.py` scripts are retired — their functionality lives in the 
+main script as `--extractArt`, with improvements.
+
+### New modes
+
+- **`--testOpus`** — Opus file integrity checking via FFmpeg decode (same pattern as `--testMP3`)
+- **`--extractArt`** — Extract embedded cover art to `cover.jpg` with format priority ranking (FLAC > Opus > M4A > MP3) and `--dry-run` support
+- **`--missingArt`** — Report directories with no cover art (distinguishes "no art at all" from "embedded only")
+- **`--duplicates`** — Detect same artist+album appearing across multiple directories or formats
+- **`--auditTags`** — Report files missing title, artist, track number, or genre with a summary breakdown
+
+### Bug fixes
+
+- **Fixed cover.jpg collision** — Cover detection is now case-insensitive. Running art extraction in a folder with both Opus and MP3 files no longer produces both `cover.jpg` and `Cover.jpg`.
+
+### Improvements
+
+- Art extraction prefers front cover (type 3) over generic embedded images
+- Art extraction supports four formats: FLAC, Opus/OGG, M4A, MP3
+- Interactive menu updated with all eight modes
+- All existing CLI invocations remain backward-compatible
+
+### Removed
+
+- `extract_opus_art.py` (folded into `--extractArt`)
+- `extract_mp3_art.py` (folded into `--extractArt`)
