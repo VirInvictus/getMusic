@@ -76,8 +76,8 @@ straightforward `open()` calls. No more leaked handles, no more
 ## Interactive Menu
 
 All prompts updated from "CSV output file" to "Output file".
-
-**Date:** 2026-03-15
+<hr />
+# **Date:** 2026-03-15
 
 getMusic.py is now a single unified toolkit. The standalone `extract_opus_art.py` 
 and `extract_mp3_art.py` scripts are retired — their functionality lives in the 
