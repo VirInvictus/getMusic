@@ -1,6 +1,6 @@
 # getMusic.py — Patch Notes
 
-# **Date:** 2026-04-04
+# v2.1.0 (2026-04-04)
 
 ---
 
@@ -76,7 +76,9 @@ straightforward `open()` calls. No more leaked handles, no more
 ## Interactive Menu
 
 All prompts updated from "CSV output file" to "Output file".
+
 <hr />
+
 # **Date:** 2026-03-15
 
 getMusic.py is now a single unified toolkit. The standalone `extract_opus_art.py` 
