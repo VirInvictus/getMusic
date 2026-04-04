@@ -79,7 +79,7 @@ All prompts updated from "CSV output file" to "Output file".
 
 <hr />
 
-# **Date:** 2026-03-15
+# v2.0 (2026-03-15)
 
 getMusic.py is now a single unified toolkit. The standalone `extract_opus_art.py` 
 and `extract_mp3_art.py` scripts are retired — their functionality lives in the 
