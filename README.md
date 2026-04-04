@@ -1,7 +1,6 @@
 <p align="center">
   <img src="logo.svg" alt="getMusic.py" width="420">
 </p>
-
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
@@ -12,13 +11,13 @@ A CLI toolkit for music collectors who manage their own libraries. Builds text-b
 
 ## Why this exists
 
-If you manage a large library (5000+ songs) in something like foobar2000 instead of relying on MusicBee, MediaMonkey, or iTunes, you eventually need tools that work the way your library is actually structured. This script expects the standard collector layout:
+If you manage a large library (5000+ songs) outside of any particular player's database, you eventually need tools that work the way your library is actually structured. This script expects the standard collector layout:
 
 ```
 ~/Music/ARTIST NAME/ALBUM NAME/01 - Track.flac
 ```
 
-It reads tags directly via [mutagen](https://mutagen.readthedocs.io/) rather than depending on any particular player's database. Ratings are pulled from standard tag fields (POPM, TXXX, Vorbis comments) — I use foobar2000's `foo_quicktag` component with keyboard shortcuts to set `%rating%` between 1 and 5, but any tagger that writes to standard fields will work.
+It reads tags directly via [mutagen](https://mutagen.readthedocs.io/) — player-agnostic by design. Ratings are pulled from standard tag fields (POPM, TXXX, Vorbis comments). I use foobar2000's `foo_quicktag` component with keyboard shortcuts to set `%rating%` between 1 and 5, but any tagger that writes to standard fields will work.
 
 ## Sample output
 
@@ -41,13 +40,14 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 | Mode | Flag | Description |
 |------|------|-------------|
 | **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
-| **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, outputs failures to CSV |
-| **MP3 integrity** | `--testMP3` | Decodes MP3 files through FFmpeg, reports errors and warnings to CSV |
-| **Opus integrity** | `--testOpus` | Decodes Opus files through FFmpeg, reports errors and warnings to CSV |
+| **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, reports failures to text |
+| **MP3 integrity** | `--testMP3` | Decodes MP3 files through FFmpeg, reports errors and warnings to text |
+| **Opus integrity** | `--testOpus` | Decodes Opus files through FFmpeg, reports errors and warnings to text |
 | **Cover art extraction** | `--extractArt` | Extracts embedded art to `cover.jpg` with format priority ranking |
-| **Missing art report** | `--missingArt` | Lists directories with no cover art (folder or embedded) to CSV |
+| **Missing art report** | `--missingArt` | Lists directories with no cover art (folder or embedded) to text |
 | **Duplicate detection** | `--duplicates` | Finds same artist+album appearing across multiple directories/formats |
-| **Tag audit** | `--auditTags` | Reports files missing title, artist, track number, or genre to CSV |
+| **Tag audit** | `--auditTags` | Reports files missing title, artist, track number, or genre to text |
+| **Version** | `--version` | Prints version and exits |
 
 Running with no arguments launches an interactive menu.
 
@@ -77,13 +77,13 @@ On Debian/Ubuntu: `sudo apt install flac ffmpeg`
 python getMusic.py --library --root ~/Music --output library.txt --genres
 
 # Verify FLAC integrity (4 parallel workers)
-python getMusic.py --testFLAC --root ~/Music --output flac_errors.csv --workers 4
+python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
 
 # Verify MP3s for decode errors
-python getMusic.py --testMP3 --root ~/Music --output mp3_errors.csv --workers 4
+python getMusic.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
 
 # Verify Opus files for decode errors
-python getMusic.py --testOpus --root ~/Music --output opus_errors.csv --workers 4
+python getMusic.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
 
 # Extract cover art (FLAC > Opus > M4A > MP3 priority)
 python getMusic.py --extractArt --root ~/Music
@@ -92,13 +92,13 @@ python getMusic.py --extractArt --root ~/Music
 python getMusic.py --extractArt --root ~/Music --dry-run
 
 # Report directories missing cover art
-python getMusic.py --missingArt --root ~/Music --output missing_art.csv
+python getMusic.py --missingArt --root ~/Music --output missing_art.txt
 
 # Find duplicate albums across formats
-python getMusic.py --duplicates --root ~/Music --output duplicates.csv
+python getMusic.py --duplicates --root ~/Music --output duplicates.txt
 
 # Audit tags for missing metadata
-python getMusic.py --auditTags --root ~/Music --output tag_audit.csv
+python getMusic.py --auditTags --root ~/Music --output tag_audit.txt
 ```
 
 ## Cover art extraction
@@ -117,7 +117,7 @@ The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `e
 ## Full help output
 
 ```
-usage: getMusic.py [-h]
+usage: getMusic.py [-h] [--version]
                    [--library | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags]
                    [--root ROOT] [--output OUTPUT] [--workers WORKERS]
                    [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]
@@ -128,6 +128,7 @@ Music library toolkit: tree, integrity, art, duplicates, tag audit
 
 options:
   -h, --help            show this help message and exit
+  --version             show program's version number and exit
   --library             Generate library tree
   --testFLAC            Verify FLAC files
   --testMP3             Verify MP3 files
