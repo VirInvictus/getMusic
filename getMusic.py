@@ -14,10 +14,13 @@ Modes:
   --auditTags     Report files missing title/artist/track/genre
   --stats         Library-wide statistics summary
   --ai-library    Token-efficient library export for AI recommendation prompts
+  --all-wings     Generate separate library files for each genre
 
 Usage examples:
   python getMusic.py --library --root ~/Music --output library.txt --genres
   python getMusic.py --ai-library --root ~/Music --output library_ai.txt
+  python getMusic.py --all-wings --root ~/Music --output wings/
+  python getMusic.py --all-wings --root ~/Music --output wings/ --genres
   python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
   python getMusic.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
   python getMusic.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
@@ -95,7 +98,7 @@ except ImportError:
 # =====================================
 # Constants
 # =====================================
-VERSION = "2.2.0"
+VERSION = "2.3.0"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
@@ -611,7 +614,7 @@ def write_ai_library(root_dir: str, output_file: str, *, quiet: bool = False) ->
             if not songs:
                 continue
 
-            # Scan all tracks for ratings; sample first for genre/artist
+            # Scan all tracks for ratings; sample first for genre
             album_genre = ""
             album_artist = artist_dir
             ratings: List[float] = []
@@ -622,8 +625,6 @@ def write_ai_library(root_dir: str, output_file: str, *, quiet: bool = False) ->
 
                 if not album_genre and t.genre:
                     album_genre = t.genre
-                if album_artist == artist_dir and t.artist:
-                    album_artist = t.artist
                 if t.rating is not None:
                     ratings.append(t.rating)
 
@@ -651,6 +652,136 @@ def write_ai_library(root_dir: str, output_file: str, *, quiet: bool = False) ->
     if not quiet:
         rated = sum(1 for _, _, _, r, _ in albums if r)
         print(f"\nWrote {len(albums)} albums ({rated} rated) to: {out_path}")
+
+
+# =====================================
+# Mode: All wings (genre-based library files)
+# =====================================
+
+def _scan_genres(root_dir: str, quiet: bool = False) -> Dict[str, List[Tuple[str, str]]]:
+    """Scan the library and group (artist_dir, album_dir) pairs by genre.
+
+    Returns a dict mapping genre name to a sorted list of (artist_dir, album_dir).
+    Albums whose tracks have no genre tag are collected under "Uncategorized".
+    """
+    total = count_audio_files(root_dir)
+    if not quiet:
+        print(f"Scanning {total} files for genre tags...")
+
+    pbar = _make_pbar(total, "Scanning genres", quiet)
+    # genre -> set of (artist_dir, album_dir)
+    genre_map: Dict[str, set] = defaultdict(set)
+
+    for artist_dir in sorted(os.listdir(root_dir)):
+        artist_path = os.path.join(root_dir, artist_dir)
+        if not os.path.isdir(artist_path):
+            continue
+
+        for album_dir in sorted(os.listdir(artist_path)):
+            album_path = os.path.join(artist_path, album_dir)
+            if not os.path.isdir(album_path):
+                continue
+
+            songs = [s for s in os.listdir(album_path) if is_audio(s)]
+            album_genre = ""
+            for song in songs:
+                t = get_all_tags(os.path.join(album_path, song))
+                pbar.update(1)
+                if not album_genre and t.genre:
+                    album_genre = t.genre
+
+            genre_map[album_genre or "Uncategorized"].add((artist_dir, album_dir))
+
+    pbar.close()
+
+    # Convert sets to sorted lists
+    return {g: sorted(pairs) for g, pairs in genre_map.items()}
+
+
+def write_all_wings(root_dir: str, outdir: str, *, quiet: bool = False,
+                    show_genre: bool = False) -> int:
+    """Generate a separate library tree file for each genre.
+
+    Scans the entire library (root/Artist/Album/songs) to determine each
+    album's genre from its tags, then writes one text file per genre into
+    *outdir* — analogous to virtual-library wings in Calibre.
+    """
+    root_dir = os.path.abspath(root_dir)
+    genre_groups = _scan_genres(root_dir, quiet=quiet)
+
+    if not genre_groups:
+        print("No albums found under root.", file=sys.stderr)
+        return 1
+
+    os.makedirs(outdir, exist_ok=True)
+
+    if not quiet:
+        print(f"\nFound {len(genre_groups)} genres. Writing wings...\n")
+
+    for genre_name in sorted(genre_groups):
+        pairs = genre_groups[genre_name]
+        safe_name = re.sub(r'[^\w\s-]', '', genre_name).strip().replace(' ', '_')
+        output = os.path.join(outdir, f"{safe_name}_Library.txt")
+
+        if not quiet:
+            print(f"→ {genre_name} ({len(pairs)} albums)")
+
+        with open(output, 'w', encoding='utf-8') as f:
+            # Group albums by artist
+            artist_albums: Dict[str, List[str]] = defaultdict(list)
+            for artist_dir, album_dir in pairs:
+                artist_albums[artist_dir].append(album_dir)
+
+            for artist_dir in sorted(artist_albums):
+                f.write(f"ARTIST: {artist_dir}\n")
+                albums = sorted(artist_albums[artist_dir])
+
+                for i, album in enumerate(albums):
+                    album_path = os.path.join(root_dir, artist_dir, album)
+                    connector = "└──" if i == len(albums) - 1 else "├──"
+
+                    songs = sorted([s for s in os.listdir(album_path) if is_audio(s)])
+
+                    if not songs:
+                        f.write(f"  {connector} ALBUM: {album}\n")
+                        f.write("      └── [No Audio Files Found]\n")
+                        continue
+
+                    if show_genre:
+                        first_tag = get_all_tags(os.path.join(album_path, songs[0]))
+                        genre_str = f" ({first_tag.genre})" if first_tag.genre else ""
+                        f.write(f"  {connector} ALBUM: {album}{genre_str}\n")
+                    else:
+                        f.write(f"  {connector} ALBUM: {album}\n")
+
+                    for j, song in enumerate(songs):
+                        song_path = os.path.join(album_path, song)
+                        t = get_all_tags(song_path)
+
+                        if t.title or t.artist:
+                            parts: List[str] = []
+                            if t.trackno:
+                                parts.append(f"{int(t.trackno):02d}.")
+                            if t.artist:
+                                parts.append(t.artist)
+                            if t.title:
+                                if t.artist:
+                                    parts.append("—")
+                                parts.append(t.title)
+                            display_name = " ".join(parts).strip()
+                        else:
+                            display_name = clean_song_name(song)
+
+                        ext = os.path.splitext(song)[1].lower().strip('.')
+                        rating_str = format_rating(t.rating)
+                        song_connector = "└──" if j == len(songs) - 1 else "├──"
+                        f.write(f"      {song_connector} SONG: {display_name} ({ext}){rating_str}\n")
+                    f.write("\n")
+
+    if not quiet:
+        total_albums = sum(len(p) for p in genre_groups.values())
+        print(f"\n{len(genre_groups)} wings ({total_albums} albums) written to: {outdir}")
+    return 0
 
 
 # =====================================
@@ -1687,6 +1818,8 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--library", action="store_true", help="Generate library tree")
     group.add_argument("--ai-library", dest="ai_library", action="store_true",
                         help="Generate token-efficient library for AI recommendations")
+    group.add_argument("--all-wings", dest="all_wings", action="store_true",
+                        help="Generate separate library files for each genre")
     group.add_argument("--testFLAC", action="store_true", help="Verify FLAC files")
     group.add_argument("--testMP3", action="store_true", help="Verify MP3 files")
     group.add_argument("--testOpus", action="store_true", help="Verify Opus files via FFmpeg decode")
@@ -1758,9 +1891,10 @@ def interactive_menu() -> int:
         print("8) Audit tags (missing title/artist/track/genre)")
         print("9) Library statistics")
         print("10) AI-readable library export")
+        print("11) Generate all wings (per-genre libraries)")
         print("q) Quit")
         try:
-            choice = input("Select [1-10/q]: ").strip().lower()
+            choice = input("Select [1-11/q]: ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             return 130
 
@@ -1828,6 +1962,12 @@ def interactive_menu() -> int:
             output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
             write_ai_library(root, output, quiet=False)
 
+        elif choice in ("11", "wings", "all-wings"):
+            root = _prompt_path("Root directory")
+            outdir = _prompt_str("Output directory", "wings") or "wings"
+            show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
+            write_all_wings(root, outdir, quiet=False, show_genre=show_g)
+
         elif choice in ("q", "quit", "exit"):
             return 0
         else:
@@ -1853,6 +1993,10 @@ def main(argv: Optional[List[str]] = None) -> int:
             output = args.output or DEFAULT_AI_LIBRARY_OUTPUT
             write_ai_library(root, output, quiet=args.quiet)
             return 0
+
+        if args.all_wings:
+            outdir = args.output or "wings"
+            return write_all_wings(root, outdir, quiet=args.quiet, show_genre=args.genres)
 
         if args.testFLAC:
             output = args.output or DEFAULT_FLAC_OUTPUT

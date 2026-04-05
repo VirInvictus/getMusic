@@ -41,6 +41,7 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 |------|------|-------------|
 | **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
 | **AI library export** | `--ai-library` | Token-efficient flat export for LLM recommendation prompts |
+| **Genre wings** | `--all-wings` | Generates a separate library tree file for each genre |
 | **Library statistics** | `--stats` | Library-wide statistics: format breakdown, bitrate, ratings, genres, top artists |
 | **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, reports failures to text |
 | **MP3 integrity** | `--testMP3` | Decodes MP3 files through FFmpeg, reports errors and warnings to text |
@@ -80,6 +81,10 @@ python getMusic.py --library --root ~/Music --output library.txt --genres
 
 # Export library for AI/LLM recommendation prompts
 python getMusic.py --ai-library --root ~/Music --output library_ai.txt
+
+# Generate per-genre library files (one .txt per genre)
+python getMusic.py --all-wings --root ~/Music --output wings/
+python getMusic.py --all-wings --root ~/Music --output wings/ --genres
 
 # Library statistics (prints to screen, or --output for file)
 python getMusic.py --stats --root ~/Music
@@ -123,6 +128,16 @@ Converge | Jane Doe | Metalcore | 4.8 | 12
 
 **Rating** is the average across all rated tracks. **Tracks** is the number of audio files in the album directory — if you've culled 3-star-and-below tracks from disk, this is your survivor count. Paste the output into a prompt and ask for recommendations against your actual library.
 
+## Genre wings
+
+The `--all-wings` mode scans genre tags across your entire library, groups albums by genre, and writes a separate library tree file for each genre into the output directory — one file per genre, analogous to virtual library wings in Calibre. Useful for breaking a large library into manageable, genre-scoped catalogs.
+
+```bash
+python getMusic.py --all-wings --root ~/Music --output wings/
+```
+
+Produces files like `Alternative_Rock_Library.txt`, `East_Coast_Rap_Library.txt`, `Neoclassical_Library.txt`, etc. Albums with no genre tag land in `Uncategorized_Library.txt`. Pass `--genres` to include the genre label in each album header.
+
 ## Library statistics
 
 The `--stats` mode produces a full library report: file counts, total size and duration, format breakdown with per-format sizes, bitrate summary (with low-quality flagging), rating distribution with bar charts, top genres, and top artists by track count. Prints to screen by default, or `--output` to save.
@@ -144,7 +159,7 @@ The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `e
 
 ```
 usage: getMusic.py [-h] [--version]
-                   [--library | --ai-library | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags | --stats]
+                   [--library | --ai-library | --all-wings | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags | --stats]
                    [--root ROOT] [--output OUTPUT] [--workers WORKERS]
                    [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]
                    [--only-errors | --no-only-errors] [--ffmpeg FFMPEG]
@@ -157,6 +172,7 @@ options:
   --version             show program's version number and exit
   --library             Generate library tree
   --ai-library          Generate token-efficient library for AI recommendations
+  --all-wings           Generate separate library files for each genre
   --testFLAC            Verify FLAC files
   --testMP3             Verify MP3 files
   --testOpus            Verify Opus files via FFmpeg decode

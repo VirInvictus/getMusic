@@ -1,5 +1,35 @@
 # getMusic.py — Patch Notes
 
+## v2.3.0 (2026-04-05)
+
+---
+
+### New Feature: Genre Wings
+
+**`--all-wings`** scans genre tags across the entire library, groups albums by
+genre, and writes a separate library tree file for each genre into an output
+directory — analogous to virtual library wings in Calibre's getBooks.
+
+```bash
+python getMusic.py --all-wings --root ~/Music --output wings/
+```
+
+Produces files like `Alternative_Rock_Library.txt`, `East_Coast_Rap_Library.txt`,
+etc. Albums with no genre tag land in `Uncategorized_Library.txt`. Each file
+uses the same tree format as `--library`. Pass `--genres` to include the genre
+label in album headers. Available from both CLI and interactive menu (option 11).
+
+### AI Library: Removed Album Artist Fallback
+
+The `--ai-library` export no longer overrides the directory-based artist name
+with tag data. Previously, the artist field fell back through TPE1 → TPE2
+(ALBUMARTIST) from tags, which added noise without value — the AI export
+doesn't distinguish album artist from track artist, and the directory name is
+the canonical artist in a well-organized library. This keeps the output cleaner
+and more predictable.
+
+---
+
 ## v2.2.0 (2026-04-05)
 
 ---
