@@ -40,6 +40,8 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 | Mode | Flag | Description |
 |------|------|-------------|
 | **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
+| **AI library export** | `--ai-library` | Token-efficient flat export for LLM recommendation prompts |
+| **Library statistics** | `--stats` | Library-wide statistics: format breakdown, bitrate, ratings, genres, top artists |
 | **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, reports failures to text |
 | **MP3 integrity** | `--testMP3` | Decodes MP3 files through FFmpeg, reports errors and warnings to text |
 | **Opus integrity** | `--testOpus` | Decodes Opus files through FFmpeg, reports errors and warnings to text |
@@ -76,6 +78,13 @@ On Debian/Ubuntu: `sudo apt install flac ffmpeg`
 # Build a library tree with genre tags
 python getMusic.py --library --root ~/Music --output library.txt --genres
 
+# Export library for AI/LLM recommendation prompts
+python getMusic.py --ai-library --root ~/Music --output library_ai.txt
+
+# Library statistics (prints to screen, or --output for file)
+python getMusic.py --stats --root ~/Music
+python getMusic.py --stats --root ~/Music --output library_stats.txt
+
 # Verify FLAC integrity (4 parallel workers)
 python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
 
@@ -101,6 +110,23 @@ python getMusic.py --duplicates --root ~/Music --output duplicates.txt
 python getMusic.py --auditTags --root ~/Music --output tag_audit.txt
 ```
 
+## AI library export
+
+The `--ai-library` mode generates a flat, pipe-delimited summary designed to fit inside an LLM context window for music recommendations:
+
+```
+Artist | Album | Genre | Rating | Tracks
+--------------------------------------------------
+Converge | Jane Doe | Metalcore | 4.8 | 12
+Ólafur Arnalds | Found Songs | Neo-Classical | 5.0 | 7
+```
+
+**Rating** is the average across all rated tracks. **Tracks** is the number of audio files in the album directory — if you've culled 3-star-and-below tracks from disk, this is your survivor count. Paste the output into a prompt and ask for recommendations against your actual library.
+
+## Library statistics
+
+The `--stats` mode produces a full library report: file counts, total size and duration, format breakdown with per-format sizes, bitrate summary (with low-quality flagging), rating distribution with bar charts, top genres, and top artists by track count. Prints to screen by default, or `--output` to save.
+
 ## Cover art extraction
 
 The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `extract_mp3_art.py` scripts. Key improvements:
@@ -118,7 +144,7 @@ The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `e
 
 ```
 usage: getMusic.py [-h] [--version]
-                   [--library | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags]
+                   [--library | --ai-library | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags | --stats]
                    [--root ROOT] [--output OUTPUT] [--workers WORKERS]
                    [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]
                    [--only-errors | --no-only-errors] [--ffmpeg FFMPEG]
@@ -130,6 +156,7 @@ options:
   -h, --help            show this help message and exit
   --version             show program's version number and exit
   --library             Generate library tree
+  --ai-library          Generate token-efficient library for AI recommendations
   --testFLAC            Verify FLAC files
   --testMP3             Verify MP3 files
   --testOpus            Verify Opus files via FFmpeg decode
@@ -137,6 +164,7 @@ options:
   --missingArt          Report directories missing cover art
   --duplicates          Detect duplicate artist+album across formats
   --auditTags           Report files with incomplete tags
+  --stats               Library-wide statistics summary
   --root ROOT           Root directory (default: current)
   --output OUTPUT       Output path
   --workers WORKERS     Parallel workers (integrity modes)
