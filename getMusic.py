@@ -12,9 +12,12 @@ Modes:
   --missingArt    Report directories with no cover art (folder or embedded)
   --duplicates    Detect same artist+album across formats
   --auditTags     Report files missing title/artist/track/genre
+  --stats         Library-wide statistics summary
+  --ai-library    Token-efficient library export for AI recommendation prompts
 
 Usage examples:
   python getMusic.py --library --root ~/Music --output library.txt --genres
+  python getMusic.py --ai-library --root ~/Music --output library_ai.txt
   python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
   python getMusic.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
   python getMusic.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
@@ -22,6 +25,8 @@ Usage examples:
   python getMusic.py --missingArt --root ~/Music --output missing_art.txt
   python getMusic.py --duplicates --root ~/Music --output duplicates.txt
   python getMusic.py --auditTags --root ~/Music --output tag_audit.txt
+  python getMusic.py --stats --root ~/Music
+  python getMusic.py --stats --root ~/Music --output library_stats.txt
 
 Notes:
   - Supports: .mp3, .flac, .ogg, .opus, .m4a, .wav, .wma, .aac
@@ -54,12 +59,13 @@ class TagBundle(NamedTuple):
     album: Optional[str] = None
     genre: Optional[str] = None
     rating: Optional[float] = None
+    duration_s: Optional[float] = None
+    bitrate_kbps: Optional[int] = None
 
 # --- Mutagen imports ---
 HAVE_MUTAGEN_BASE = False
 try:
     from mutagen import File as MutagenFile
-    from mutagen.id3 import ID3, ID3NoHeaderError
     from mutagen.flac import FLAC, Picture
     from mutagen.oggvorbis import OggVorbis
     from mutagen.mp4 import MP4
@@ -89,7 +95,7 @@ except ImportError:
 # =====================================
 # Constants
 # =====================================
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
@@ -100,6 +106,11 @@ DEFAULT_DUPLICATES_OUTPUT = "duplicates.txt"
 DEFAULT_TAG_AUDIT_OUTPUT = "tag_audit.txt"
 
 AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.wma', '.aac'}
+
+
+def is_audio(filename: str) -> bool:
+    """Check if a filename has a recognized audio extension."""
+    return os.path.splitext(filename)[1].lower() in AUDIO_EXTENSIONS
 
 # Cover filenames to check (case-insensitive matching applied at check time)
 COVER_NAMES = {"cover.jpg", "cover.jpeg", "cover.png",
@@ -168,6 +179,11 @@ def normalize_rating(val) -> Optional[float]:
     return None
 
 
+def _looks_numeric(val) -> bool:
+    """Check if a value looks like a number (int or float)."""
+    return bool(val) and str(val).replace('.', '').isdigit()
+
+
 def format_rating(rating: Optional[float]) -> str:
     if rating is None:
         return ""
@@ -197,7 +213,7 @@ def update_progress(current: int, total: int, prefix: str = "Progress") -> None:
 def count_audio_files(root_dir: str) -> int:
     total = 0
     for _, _, files in os.walk(root_dir):
-        total += sum(1 for f in files if os.path.splitext(f)[1].lower() in AUDIO_EXTENSIONS)
+        total += sum(1 for f in files if is_audio(f))
     return total
 
 
@@ -275,365 +291,168 @@ def _has_cover_file(directory: str) -> bool:
     return bool(existing & COVER_NAMES)
 
 
-def _get_cover_file_path(directory: str) -> Optional[str]:
-    """Returns the path to an existing cover file if one exists (case-insensitive)."""
-    try:
-        for f in os.listdir(directory):
-            if f.lower() in COVER_NAMES:
-                return os.path.join(directory, f)
-    except OSError:
+class _FallbackProgress:
+    """Simple progress bar for when tqdm is not installed."""
+    __slots__ = ('_current', '_total', '_desc', '_quiet')
+
+    def __init__(self, total: int, desc: str, quiet: bool):
+        self._current = 0
+        self._total = total
+        self._desc = desc
+        self._quiet = quiet
+
+    def update(self, n: int = 1) -> None:
+        self._current += n
+        if not self._quiet:
+            update_progress(self._current, self._total, self._desc)
+
+    def close(self) -> None:
         pass
-    return None
 
 
 def _make_pbar(total: int, desc: str, quiet: bool):
-    """Create a progress bar — tqdm if available, else None."""
+    """Create a progress bar — tqdm if available, else a simple fallback."""
     if HAVE_TQDM and not quiet:
         return tqdm(total=total, unit="file", desc=desc, dynamic_ncols=True)
-    return None
+    return _FallbackProgress(total, desc, quiet)
 
 
 # =====================================
-# Tag helpers
+# Tag extraction
 # =====================================
-
-def get_title_artist_track(file_path: str) -> Tuple[Optional[str], Optional[str], Optional[int]]:
-    title = artist = None
-    trackno: Optional[int] = None
-
-    if not HAVE_MUTAGEN_BASE:
-        return None, None, None
-
-    try:
-        # 1. Try easy abstraction
-        try:
-            easy = MutagenFile(file_path, easy=True)
-            if easy and easy.tags:
-                title = _first_text(easy.tags.get('title'))
-                artist = _first_text(easy.tags.get('artist')) or _first_text(easy.tags.get('albumartist'))
-                trackno = _parse_track_number(easy.tags.get('tracknumber'))
-        except Exception:
-            pass
-
-        # 2. Fallback to format-specific parsing
-        if not (title and artist and trackno):
-            audio = MutagenFile(file_path)
-            if not audio:
-                return title, artist, trackno
-
-            ext = os.path.splitext(file_path)[1].lower()
-
-            if ext == '.mp3':
-                try:
-                    id3 = ID3(file_path)
-                    if title is None and id3.get('TIT2'):
-                        title = _first_text(id3.get('TIT2').text)
-                    if artist is None:
-                        if id3.get('TPE1'):
-                            artist = _first_text(id3.get('TPE1').text)
-                        elif id3.get('TPE2'):
-                            artist = _first_text(id3.get('TPE2').text)
-                    if trackno is None and id3.get('TRCK'):
-                        trackno = _parse_track_number(id3.get('TRCK').text)
-                except ID3NoHeaderError:
-                    pass
-
-            elif isinstance(audio, MP4):
-                tags = getattr(audio, 'tags', {}) or {}
-                if title is None:
-                    title = _first_text(tags.get('\xa9nam'))
-                if artist is None:
-                    artist = _first_text(tags.get('\xa9ART')) or _first_text(tags.get('aART'))
-                if trackno is None:
-                    trackno = _parse_track_number(tags.get('trkn'))
-
-            elif isinstance(audio, (FLAC, OggVorbis, OggOpus)):
-                tags = getattr(audio, 'tags', {}) or {}
-                keys = {k.lower(): k for k in tags.keys()}
-                if title is None and 'title' in keys:
-                    title = _first_text(tags[keys['title']])
-                if artist is None:
-                    if 'artist' in keys:
-                        artist = _first_text(tags[keys['artist']])
-                    elif 'albumartist' in keys:
-                        artist = _first_text(tags[keys['albumartist']])
-                if trackno is None and 'tracknumber' in keys:
-                    trackno = _parse_track_number(tags[keys['tracknumber']])
-
-            elif isinstance(audio, ASF):
-                tags = getattr(audio, 'tags', {}) or {}
-                name_map = {k.lower(): k for k in tags.keys()}
-                if title is None and (k := name_map.get('title')):
-                    title = _first_text(tags.get(k))
-                if artist is None and (k := name_map.get('author') or name_map.get('wm/albumartist')):
-                    artist = _first_text(tags.get(k))
-                if trackno is None and (k := name_map.get('wm/tracknumber') or name_map.get('tracknumber')):
-                    trackno = _parse_track_number(tags.get(k))
-
-    except Exception:
-        pass
-
-    return title, artist, trackno
-
-
-def get_album(file_path: str) -> Optional[str]:
-    """Extract album name from audio file tags."""
-    if not HAVE_MUTAGEN_BASE:
-        return None
-    try:
-        easy = MutagenFile(file_path, easy=True)
-        if easy and easy.tags and 'album' in easy.tags:
-            return _first_text(easy.tags['album'])
-
-        audio = MutagenFile(file_path)
-        if not audio:
-            return None
-        tags = getattr(audio, 'tags', {}) or {}
-
-        if isinstance(audio, MP4):
-            return _first_text(tags.get('\xa9alb'))
-
-        # Vorbis-style or ID3 — try case-insensitive
-        for k, v in tags.items():
-            if str(k).lower() == 'album':
-                return _first_text(v)
-        # ID3 TALB
-        if hasattr(tags, 'getall'):
-            talb = tags.getall('TALB')
-            if talb:
-                return _first_text(talb[0])
-    except Exception:
-        pass
-    return None
-
-
-def get_genre(file_path: str) -> Optional[str]:
-    """Extracts the genre from the audio file tags."""
-    if not HAVE_MUTAGEN_BASE:
-        return None
-    try:
-        try:
-            easy = MutagenFile(file_path, easy=True)
-            if easy and easy.tags and 'genre' in easy.tags:
-                return _first_text(easy.tags['genre'])
-        except Exception:
-            pass
-
-        audio = MutagenFile(file_path)
-        if not audio:
-            return None
-
-        tags = getattr(audio, 'tags', {}) or {}
-
-        if hasattr(tags, 'getall'):
-            tcon = tags.getall('TCON')
-            if tcon:
-                return _first_text(tcon[0])
-
-        for k, v in tags.items():
-            k_lower = str(k).lower()
-            if k_lower == 'genre':
-                return _first_text(v)
-            if k_lower == '\xa9gen':
-                return _first_text(v)
-            if k_lower == 'gnre':
-                return _first_text(v)
-            if k_lower == 'wm/genre':
-                return _first_text(v)
-
-    except Exception:
-        pass
-    return None
-
-
-def get_rating(file_path: str) -> Optional[float]:
-    if not HAVE_MUTAGEN_BASE:
-        return None
-    try:
-        ext = os.path.splitext(file_path)[1].lower()
-        audio = MutagenFile(file_path)
-        if not audio:
-            return None
-
-        if ext == '.mp3':
-            try:
-                id3 = ID3(file_path)
-            except ID3NoHeaderError:
-                return None
-            for popm in id3.getall('POPM'):
-                if getattr(popm, 'email', '') == 'Windows Media Player 9 Series':
-                    wmp_map = {1: 1.0, 64: 2.0, 128: 3.0, 196: 4.0, 255: 5.0}
-                    return wmp_map.get(popm.rating, normalize_rating(popm.rating))
-            for popm in id3.getall('POPM'):
-                if popm.rating > 0:
-                    return normalize_rating(popm.rating)
-            for txxx in id3.getall('TXXX'):
-                desc = (txxx.desc or "").lower()
-                if 'rating' in desc or desc in ('rate', 'score', 'stars'):
-                    val = txxx.text[0] if txxx.text else None
-                    if val and str(val).replace('.', '').isdigit():
-                        return normalize_rating(val)
-
-        elif isinstance(audio, (FLAC, OggVorbis, OggOpus)):
-            for key, val in (audio.tags or {}).items():
-                if 'rating' in key.lower() or 'score' in key.lower() or 'stars' in key.lower():
-                    val = val[0] if isinstance(val, list) else val
-                    if str(val).replace('.', '').isdigit():
-                        return normalize_rating(val)
-
-        elif isinstance(audio, MP4):
-            for key, val in (audio.tags or {}).items():
-                k = key.lower() if isinstance(key, str) else str(key).lower()
-                if 'rate' in k or 'rating' in k:
-                    val = val[0] if isinstance(val, list) else val
-                    if str(val).replace('.', '').isdigit():
-                        return normalize_rating(val)
-
-        elif isinstance(audio, ASF):
-            for key, val in (audio.tags or {}).items():
-                if 'rating' in key.lower():
-                    val = val[0] if isinstance(val, list) else val
-                    if str(val).replace('.', '').isdigit():
-                        return normalize_rating(val)
-        return None
-    except Exception:
-        return None
-
 
 def get_all_tags(file_path: str) -> TagBundle:
-    """Extract all metadata in a single file open.  Replaces the pattern of
-    calling get_title_artist_track + get_album + get_genre + get_rating
-    independently (4 MutagenFile opens -> 1)."""
+    """Extract all metadata in a single file open."""
     if not HAVE_MUTAGEN_BASE:
         return TagBundle()
 
     title = artist = album = genre = None
     trackno: Optional[int] = None
     rating: Optional[float] = None
+    duration_s: Optional[float] = None
+    bitrate_kbps: Optional[int] = None
 
     try:
-        # --- easy abstraction pass ---
-        try:
-            easy = MutagenFile(file_path, easy=True)
-            if easy and easy.tags:
-                title = _first_text(easy.tags.get('title'))
-                artist = (_first_text(easy.tags.get('artist'))
-                          or _first_text(easy.tags.get('albumartist')))
-                trackno = _parse_track_number(easy.tags.get('tracknumber'))
-                album = _first_text(easy.tags.get('album'))
-                genre = _first_text(easy.tags.get('genre'))
-        except Exception:
-            pass
-
-        # --- format-specific fallback (single open) ---
         audio = MutagenFile(file_path)
         if not audio:
-            return TagBundle(title, artist, trackno, album, genre, rating)
+            return TagBundle()
+
+        # Extract duration and bitrate from audio.info
+        info = getattr(audio, 'info', None)
+        if info:
+            length = getattr(info, 'length', 0.0) or 0.0
+            if length > 0:
+                duration_s = round(length, 3)
+            br = getattr(info, 'bitrate', 0) or 0
+            if br > 0:
+                bitrate_kbps = int(br / 1000)
 
         ext = os.path.splitext(file_path)[1].lower()
         tags = getattr(audio, 'tags', {}) or {}
 
         if ext == '.mp3':
-            try:
-                id3 = ID3(file_path)
-                if title is None and id3.get('TIT2'):
-                    title = _first_text(id3.get('TIT2').text)
-                if artist is None:
-                    if id3.get('TPE1'):
-                        artist = _first_text(id3.get('TPE1').text)
-                    elif id3.get('TPE2'):
-                        artist = _first_text(id3.get('TPE2').text)
-                if trackno is None and id3.get('TRCK'):
-                    trackno = _parse_track_number(id3.get('TRCK').text)
-                if album is None and id3.get('TALB'):
-                    album = _first_text(id3.get('TALB').text)
-                if genre is None:
-                    tcon = id3.getall('TCON')
-                    if tcon:
-                        genre = _first_text(tcon[0])
-                # Rating: POPM / TXXX
-                for popm in id3.getall('POPM'):
+            # ID3 tags — accessible via audio.tags from MutagenFile
+            if not tags:
+                return TagBundle(title, artist, trackno, album, genre, rating,
+                                 duration_s, bitrate_kbps)
+
+            if hasattr(tags, 'get'):
+                tit2 = tags.get('TIT2')
+                if tit2:
+                    title = _first_text(tit2.text)
+                tpe1 = tags.get('TPE1')
+                tpe2 = tags.get('TPE2')
+                if tpe1:
+                    artist = _first_text(tpe1.text)
+                elif tpe2:
+                    artist = _first_text(tpe2.text)
+                trck = tags.get('TRCK')
+                if trck:
+                    trackno = _parse_track_number(trck.text)
+                talb = tags.get('TALB')
+                if talb:
+                    album = _first_text(talb.text)
+
+            if hasattr(tags, 'getall'):
+                tcon = tags.getall('TCON')
+                if tcon:
+                    genre = _first_text(tcon[0])
+
+                # Rating: POPM (prefer WMP, then any) / TXXX
+                for popm in tags.getall('POPM'):
                     if getattr(popm, 'email', '') == 'Windows Media Player 9 Series':
                         wmp_map = {1: 1.0, 64: 2.0, 128: 3.0, 196: 4.0, 255: 5.0}
                         rating = wmp_map.get(popm.rating, normalize_rating(popm.rating))
                         break
                 if rating is None:
-                    for popm in id3.getall('POPM'):
+                    for popm in tags.getall('POPM'):
                         if popm.rating > 0:
                             rating = normalize_rating(popm.rating)
                             break
                 if rating is None:
-                    for txxx in id3.getall('TXXX'):
+                    for txxx in tags.getall('TXXX'):
                         desc = (txxx.desc or "").lower()
                         if 'rating' in desc or desc in ('rate', 'score', 'stars'):
                             val = txxx.text[0] if txxx.text else None
-                            if val and str(val).replace('.', '').isdigit():
+                            if _looks_numeric(val):
                                 rating = normalize_rating(val)
                                 break
-            except ID3NoHeaderError:
-                pass
 
         elif isinstance(audio, MP4):
-            if title is None:
-                title = _first_text(tags.get('\xa9nam'))
-            if artist is None:
-                artist = _first_text(tags.get('\xa9ART')) or _first_text(tags.get('aART'))
-            if trackno is None:
-                trackno = _parse_track_number(tags.get('trkn'))
-            if album is None:
-                album = _first_text(tags.get('\xa9alb'))
-            if genre is None:
-                for k in ('\xa9gen', 'gnre'):
-                    v = tags.get(k)
-                    if v:
-                        genre = _first_text(v)
-                        break
+            title = _first_text(tags.get('\xa9nam'))
+            artist = _first_text(tags.get('\xa9ART')) or _first_text(tags.get('aART'))
+            trackno = _parse_track_number(tags.get('trkn'))
+            album = _first_text(tags.get('\xa9alb'))
+            for k in ('\xa9gen', 'gnre'):
+                v = tags.get(k)
+                if v:
+                    genre = _first_text(v)
+                    break
             for k, v in tags.items():
                 kl = k.lower() if isinstance(k, str) else str(k).lower()
                 if 'rate' in kl or 'rating' in kl:
                     v = v[0] if isinstance(v, list) else v
-                    if str(v).replace('.', '').isdigit():
+                    if _looks_numeric(v):
                         rating = normalize_rating(v)
                         break
 
         elif isinstance(audio, (FLAC, OggVorbis, OggOpus)):
             keys = {k.lower(): k for k in tags.keys()}
-            if title is None and 'title' in keys:
+            if 'title' in keys:
                 title = _first_text(tags[keys['title']])
-            if artist is None:
-                if 'artist' in keys:
-                    artist = _first_text(tags[keys['artist']])
-                elif 'albumartist' in keys:
-                    artist = _first_text(tags[keys['albumartist']])
-            if trackno is None and 'tracknumber' in keys:
+            if 'artist' in keys:
+                artist = _first_text(tags[keys['artist']])
+            elif 'albumartist' in keys:
+                artist = _first_text(tags[keys['albumartist']])
+            if 'tracknumber' in keys:
                 trackno = _parse_track_number(tags[keys['tracknumber']])
-            if album is None and 'album' in keys:
+            if 'album' in keys:
                 album = _first_text(tags[keys['album']])
-            if genre is None and 'genre' in keys:
+            if 'genre' in keys:
                 genre = _first_text(tags[keys['genre']])
             for key, val in tags.items():
                 if 'rating' in key.lower() or 'score' in key.lower() or 'stars' in key.lower():
                     val = val[0] if isinstance(val, list) else val
-                    if str(val).replace('.', '').isdigit():
+                    if _looks_numeric(val):
                         rating = normalize_rating(val)
                         break
 
         elif isinstance(audio, ASF):
             name_map = {k.lower(): k for k in tags.keys()}
-            if title is None and (k := name_map.get('title')):
+            if (k := name_map.get('title')):
                 title = _first_text(tags.get(k))
-            if artist is None and (k := name_map.get('author') or name_map.get('wm/albumartist')):
+            if (k := name_map.get('author') or name_map.get('wm/albumartist')):
                 artist = _first_text(tags.get(k))
-            if trackno is None and (k := name_map.get('wm/tracknumber') or name_map.get('tracknumber')):
+            if (k := name_map.get('wm/tracknumber') or name_map.get('tracknumber')):
                 trackno = _parse_track_number(tags.get(k))
-            if album is None and (k := name_map.get('wm/albumtitle')):
+            if (k := name_map.get('wm/albumtitle')):
                 album = _first_text(tags.get(k))
-            if genre is None and (k := name_map.get('wm/genre')):
+            if (k := name_map.get('wm/genre')):
                 genre = _first_text(tags.get(k))
             for key, val in tags.items():
                 if 'rating' in key.lower():
                     val = val[0] if isinstance(val, list) else val
-                    if str(val).replace('.', '').isdigit():
+                    if _looks_numeric(val):
                         rating = normalize_rating(val)
                         break
 
@@ -653,7 +472,8 @@ def get_all_tags(file_path: str) -> TagBundle:
     except Exception:
         pass
 
-    return TagBundle(title, artist, trackno, album, genre, rating)
+    return TagBundle(title, artist, trackno, album, genre, rating,
+                     duration_s, bitrate_kbps)
 
 
 # =====================================
@@ -666,8 +486,10 @@ def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = F
     if not quiet:
         print(f"Found {total_files} audio files to process under: {root_dir}\n")
 
-    current_file = 0
     pbar = _make_pbar(total_files, "Scanning library", quiet)
+
+    output_file = os.path.abspath(output_file)
+    os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
 
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -692,7 +514,7 @@ def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = F
 
                     songs = sorted([
                         s for s in os.listdir(album_path)
-                        if os.path.splitext(s)[1].lower() in AUDIO_EXTENSIONS
+                        if is_audio(s)
                     ])
 
                     if not songs:
@@ -700,24 +522,24 @@ def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = F
                         f.write("      └── [No Audio Files Found]\n")
                         continue
 
-                    # Get genre from first song if requested (uses unified reader)
-                    genre_str = ""
+                    # Genre header: defer until first song read, or write immediately
                     if show_genre:
-                        first_tags = get_all_tags(os.path.join(album_path, songs[0]))
-                        if first_tags.genre:
-                            genre_str = f" ({first_tags.genre})"
-
-                    f.write(f"  {connector} ALBUM: {album}{genre_str}\n")
+                        album_header_written = False
+                    else:
+                        f.write(f"  {connector} ALBUM: {album}\n")
+                        album_header_written = True
 
                     for j, song in enumerate(songs):
-                        current_file += 1
-                        if pbar:
-                            pbar.update(1)
-                        else:
-                            update_progress(current_file, total_files, "Scanning")
+                        pbar.update(1)
 
                         song_path = os.path.join(album_path, song)
                         t = get_all_tags(song_path)
+
+                        # Write album header with genre from first track
+                        if not album_header_written:
+                            genre_str = f" ({t.genre})" if t.genre else ""
+                            f.write(f"  {connector} ALBUM: {album}{genre_str}\n")
+                            album_header_written = True
 
                         if t.title or t.artist:
                             parts: List[str] = []
@@ -744,8 +566,91 @@ def write_music_library_tree(root_dir: str, output_file: str, *, quiet: bool = F
             print("\nInterrupted by user. Library scan cancelled.")
         return
     finally:
-        if pbar:
-            pbar.close()
+        pbar.close()
+
+
+# =====================================
+# Mode: AI-readable library export
+# =====================================
+DEFAULT_AI_LIBRARY_OUTPUT = "library_ai.txt"
+
+
+def write_ai_library(root_dir: str, output_file: str, *, quiet: bool = False) -> None:
+    """Write a flat, token-efficient library summary for LLM consumption.
+
+    One line per album: Artist | Album | Genre | Rating | Tracks
+    Rating is the average of all rated tracks in the album, or blank if unrated.
+    Tracks is the number of audio files surviving in the album directory.
+    Genre is sampled from the first track with a genre tag.
+    """
+    root_dir = os.path.abspath(root_dir)
+    total = count_audio_files(root_dir)
+
+    if not quiet:
+        print(f"Scanning {total} files under: {root_dir}")
+
+    pbar = _make_pbar(total, "Building AI library", quiet)
+
+    # (artist, album, genre, rating, track_count)
+    albums: List[Tuple[str, str, str, str, int]] = []
+
+    for artist_dir in sorted(os.listdir(root_dir)):
+        artist_path = os.path.join(root_dir, artist_dir)
+        if not os.path.isdir(artist_path):
+            continue
+
+        for album_name in sorted(os.listdir(artist_path)):
+            album_path = os.path.join(artist_path, album_name)
+            if not os.path.isdir(album_path):
+                continue
+
+            songs = [
+                s for s in os.listdir(album_path)
+                if is_audio(s)
+            ]
+            if not songs:
+                continue
+
+            # Scan all tracks for ratings; sample first for genre/artist
+            album_genre = ""
+            album_artist = artist_dir
+            ratings: List[float] = []
+
+            for song in songs:
+                song_path = os.path.join(album_path, song)
+                t = get_all_tags(song_path)
+
+                if not album_genre and t.genre:
+                    album_genre = t.genre
+                if album_artist == artist_dir and t.artist:
+                    album_artist = t.artist
+                if t.rating is not None:
+                    ratings.append(t.rating)
+
+                pbar.update(1)
+
+            # Average rating, rounded to one decimal
+            if ratings:
+                avg = sum(ratings) / len(ratings)
+                rating_str = f"{avg:.1f}"
+            else:
+                rating_str = ""
+
+            albums.append((album_artist, album_name, album_genre, rating_str, len(songs)))
+
+    pbar.close()
+
+    out_path = os.path.abspath(output_file)
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("Artist | Album | Genre | Rating | Tracks\n")
+        f.write("-" * 50 + "\n")
+        for artist, album, genre, rating, tracks in albums:
+            f.write(f"{artist} | {album} | {genre} | {rating} | {tracks}\n")
+
+    if not quiet:
+        rated = sum(1 for _, _, _, r, _ in albums if r)
+        print(f"\nWrote {len(albums)} albums ({rated} rated) to: {out_path}")
 
 
 # =====================================
@@ -769,23 +674,31 @@ def test_with_ffmpeg(filepath: str) -> Tuple[bool, str]:
 
 
 def test_flac(filepath: str, prefer: str) -> Tuple[bool, str, str]:
+    have_flac = has_tool("flac")
+    have_ffmpeg = has_tool("ffmpeg")
+
+    # Build tool order based on preference
+    tools: List[Tuple[str, Any]] = []
     if prefer == "ffmpeg":
-        if has_tool("ffmpeg"):
-            ok, msg = test_with_ffmpeg(filepath)
-            if ok or not has_tool("flac"):
-                return ok, "ffmpeg", ("" if ok else msg)
-        if has_tool("flac"):
-            ok, msg = test_with_flac(filepath)
-            return ok, "flac", ("" if ok else msg)
-        return False, "none", "Neither 'ffmpeg' nor 'flac' found in PATH."
+        if have_ffmpeg:
+            tools.append(("ffmpeg", test_with_ffmpeg))
+        if have_flac:
+            tools.append(("flac", test_with_flac))
     else:
-        if has_tool("flac"):
-            ok, msg = test_with_flac(filepath)
-            return ok, "flac", ("" if ok else msg)
-        if has_tool("ffmpeg"):
-            ok, msg = test_with_ffmpeg(filepath)
-            return ok, "ffmpeg", ("" if ok else msg)
-        return False, "none", "Neither 'flac' nor 'ffmpeg' found in PATH."
+        if have_flac:
+            tools.append(("flac", test_with_flac))
+        if have_ffmpeg:
+            tools.append(("ffmpeg", test_with_ffmpeg))
+
+    if not tools:
+        return False, "none", "Neither 'ffmpeg' nor 'flac' found in PATH."
+
+    for name, func in tools:
+        ok, msg = func(filepath)
+        if ok:
+            return True, name, ""
+    # All tools failed — return the last result
+    return False, name, msg
 
 
 def run_flac_mode(root: str, output: str, workers: int, prefer: str, *, quiet: bool = False) -> int:
@@ -817,7 +730,6 @@ def run_flac_mode(root: str, output: str, workers: int, prefer: str, *, quiet: b
         except Exception as e:
             return str(path), False, "exception", repr(e)
 
-    checked = 0
     pbar = _make_pbar(total, "Testing FLACs", quiet)
     ex: Optional[ThreadPoolExecutor] = None
     futures: Dict = {}
@@ -826,13 +738,9 @@ def run_flac_mode(root: str, output: str, workers: int, prefer: str, *, quiet: b
         futures = {ex.submit(worker, p): p for p in flacs}
         for fut in as_completed(futures):
             path, ok, method, msg = fut.result()
-            checked += 1
             if not ok:
                 errors.append((path, method, msg))
-            if pbar:
-                pbar.update(1)
-            else:
-                update_progress(checked, total, prefix="Testing FLACs")
+            pbar.update(1)
     except KeyboardInterrupt:
         if not quiet:
             print("\nInterrupted by user. Cancelling FLAC checks...")
@@ -844,14 +752,13 @@ def run_flac_mode(root: str, output: str, workers: int, prefer: str, *, quiet: b
     finally:
         if ex is not None:
             ex.shutdown(wait=True)
-        if pbar:
-            pbar.close()
+        pbar.close()
 
     if errors:
         out_path = os.path.abspath(output)
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as f:
-            f.write(f"FLAC INTEGRITY REPORT\n")
+            f.write("FLAC INTEGRITY REPORT\n")
             f.write(f"Root: {root}\n")
             f.write(f"Scanned: {total}  Errors: {len(errors)}\n")
             f.write("=" * 60 + "\n\n")
@@ -886,7 +793,7 @@ def _find_files_by_ext_path(root: Path, ext: str) -> List[Path]:
         return [root]
     for dirpath, _, files in os.walk(root):
         for fn in files:
-            if fn.lower().endswith(ext):
+            if os.path.splitext(fn)[1].lower() == ext:
                 out.append(Path(dirpath) / fn)
     return out
 
@@ -929,12 +836,16 @@ def _ffmpeg_decode_check(ffmpeg_path: Optional[str], path: Path) -> Tuple[bool, 
     return True, "decode ok"
 
 
-def _scan_one_mp3(path: Path, ffmpeg_path: Optional[str]) -> Dict[str, Any]:
+def _scan_one_file(path: Path, ffmpeg_path: Optional[str], *, enrich: bool = False) -> Dict[str, Any]:
+    """Scan a single audio file for decode errors. If enrich=True, also pull
+    mutagen header info (bitrate, duration, sample rate, VBR mode)."""
     row: Dict[str, Any] = {
         "path": str(path), "size_bytes": None, "status": "ok", "details": "",
-        "duration_s": None, "bitrate_kbps": None, "sample_rate_hz": None,
-        "mode": None, "vbr_mode": None,
     }
+    if enrich:
+        row.update({"duration_s": None, "bitrate_kbps": None,
+                     "sample_rate_hz": None, "mode": None, "vbr_mode": None})
+
     try:
         row["size_bytes"] = path.stat().st_size
     except Exception as e:
@@ -942,7 +853,8 @@ def _scan_one_mp3(path: Path, ffmpeg_path: Optional[str]) -> Dict[str, Any]:
         row["details"] = f"stat failed: {e!r}"
         return row
 
-    row.update({k: v for k, v in _mutagen_header_info(path).items() if k in row})
+    if enrich:
+        row.update({k: v for k, v in _mutagen_header_info(path).items() if k in row})
 
     ok, msg = _ffmpeg_decode_check(ffmpeg_path, path)
     if "FFmpeg not available" in msg:
@@ -956,127 +868,8 @@ def _scan_one_mp3(path: Path, ffmpeg_path: Optional[str]) -> Dict[str, Any]:
     return row
 
 
-def run_mp3_mode(
-        root: str, output: str, workers: int, ffmpeg: Optional[str],
-        *, only_errors: bool, verbose: bool, quiet: bool,
-) -> int:
-    root_path = Path(os.path.abspath(root))
-    ffmpeg_path = _find_ffmpeg(ffmpeg)
-
-    if not ffmpeg_path and not quiet:
-        print("[warn] FFmpeg not found. Install it or pass --ffmpeg /path/to/ffmpeg", file=sys.stderr)
-
-    targets = _find_files_by_ext_path(root_path, ".mp3")
-
-    if not targets:
-        if not quiet:
-            print("No .mp3 files found.", file=sys.stderr)
-        return 0
-
-    started = time.time()
-    oks = warns = errs = 0
-    results: List[Dict[str, Any]] = []
-
-    pbar = _make_pbar(len(targets), "Scanning MP3s", quiet)
-    ex: Optional[ThreadPoolExecutor] = None
-    futures: Dict = {}
-
-    if verbose:
-        only_errors = False
-        quiet = False
-
-    try:
-        ex = ThreadPoolExecutor(max_workers=max(1, workers))
-        futures = {ex.submit(_scan_one_mp3, p, ffmpeg_path): p for p in targets}
-
-        for fut in as_completed(futures):
-            row = fut.result()
-            status = row.get("status")
-            if status == "ok":
-                oks += 1
-            elif status == "warn":
-                warns += 1
-            else:
-                errs += 1
-
-            if not (only_errors and status == "ok"):
-                results.append(row)
-
-            if pbar:
-                pbar.update(1)
-
-    except KeyboardInterrupt:
-        if not quiet:
-            print("\nInterrupted by user. Cancelling MP3 scan…", file=sys.stderr)
-        if ex is not None:
-            for f in futures:
-                f.cancel()
-            ex.shutdown(cancel_futures=True)
-        return 130
-    finally:
-        if ex is not None:
-            ex.shutdown(wait=True)
-        if pbar:
-            pbar.close()
-
-    elapsed = time.time() - started
-    out_path = Path(output or DEFAULT_MP3_OUTPUT).expanduser().resolve()
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("MP3 INTEGRITY REPORT\n")
-        f.write(f"Root: {root_path}\n")
-        f.write(f"Scanned: {len(targets)}  OK: {oks}  Warn: {warns}  Error: {errs}\n")
-        f.write(f"Elapsed: {elapsed:.1f}s\n")
-        f.write("=" * 60 + "\n\n")
-
-        error_rows = [r for r in results if r["status"] == "error"]
-        warn_rows = [r for r in results if r["status"] == "warn"]
-        ok_rows = [r for r in results if r["status"] == "ok"]
-
-        if error_rows:
-            f.write(f"ERRORS ({len(error_rows)})\n")
-            f.write("-" * 40 + "\n")
-            for r in error_rows:
-                rel = os.path.relpath(r["path"], str(root_path))
-                f.write(f"  {rel}\n")
-                if r.get("details"):
-                    f.write(f"    {r['details']}\n")
-                meta = _format_mp3_meta(r)
-                if meta:
-                    f.write(f"    {meta}\n")
-                f.write("\n")
-
-        if warn_rows:
-            f.write(f"WARNINGS ({len(warn_rows)})\n")
-            f.write("-" * 40 + "\n")
-            for r in warn_rows:
-                rel = os.path.relpath(r["path"], str(root_path))
-                f.write(f"  {rel}\n")
-                if r.get("details"):
-                    f.write(f"    {r['details']}\n")
-                f.write("\n")
-
-        if ok_rows:
-            f.write(f"OK ({len(ok_rows)})\n")
-            f.write("-" * 40 + "\n")
-            for r in ok_rows:
-                rel = os.path.relpath(r["path"], str(root_path))
-                meta = _format_mp3_meta(r)
-                if meta:
-                    f.write(f"  {rel}  [{meta}]\n")
-                else:
-                    f.write(f"  {rel}\n")
-
-    if not quiet:
-        print(f"\nScanned: {len(targets)} files in {elapsed:.1f}s")
-        print(f"ok: {oks}  warn: {warns}  error: {errs}")
-        print(f"Report written to: {out_path}")
-    return 1 if errs > 0 else 0
-
-
-def _format_mp3_meta(row: Dict[str, Any]) -> str:
-    """Format MP3 metadata fields into a compact summary string."""
+def _format_row_meta(row: Dict[str, Any]) -> str:
+    """Format metadata fields into a compact summary string."""
     parts: List[str] = []
     if row.get("bitrate_kbps"):
         parts.append(f"{row['bitrate_kbps']}kbps")
@@ -1089,56 +882,39 @@ def _format_mp3_meta(row: Dict[str, Any]) -> str:
     return "  ".join(parts)
 
 
-# =====================================
-# Mode: Opus decode check (NEW)
-# =====================================
-
-def _scan_one_opus(path: Path, ffmpeg_path: Optional[str]) -> Dict[str, Any]:
-    row: Dict[str, Any] = {
-        "path": str(path), "size_bytes": None, "status": "ok", "details": "",
-    }
-    try:
-        row["size_bytes"] = path.stat().st_size
-    except Exception as e:
-        row["status"] = "error"
-        row["details"] = f"stat failed: {e!r}"
-        return row
-
-    ok, msg = _ffmpeg_decode_check(ffmpeg_path, path)
-    if "FFmpeg not available" in msg:
-        row["status"] = "warn"
-        row["details"] = msg
-    elif not ok:
-        row["status"] = "error"
-        row["details"] = msg
-    else:
-        row["details"] = msg
-    return row
-
-
-def run_opus_mode(
+def _run_decode_scan(
         root: str, output: str, workers: int, ffmpeg: Optional[str],
-        *, only_errors: bool, verbose: bool, quiet: bool,
+        *, ext: str, report_title: str, default_output: str,
+        ffmpeg_required: bool, enrich: bool,
+        only_errors: bool, verbose: bool, quiet: bool,
 ) -> int:
+    """Unified decode-check scanner for MP3, Opus, and future formats."""
     root_path = Path(os.path.abspath(root))
     ffmpeg_path = _find_ffmpeg(ffmpeg)
-    if not ffmpeg_path:
-        if not quiet:
-            print("[warn] FFmpeg not found. Required for Opus decode testing.", file=sys.stderr)
-        return 2
 
-    targets = _find_files_by_ext_path(root_path, ".opus")
+    if not ffmpeg_path:
+        if ffmpeg_required:
+            if not quiet:
+                print(f"[warn] FFmpeg not found. Required for {ext.strip('.')} decode testing.",
+                      file=sys.stderr)
+            return 2
+        elif not quiet:
+            print("[warn] FFmpeg not found. Install it or pass --ffmpeg /path/to/ffmpeg",
+                  file=sys.stderr)
+
+    targets = _find_files_by_ext_path(root_path, ext)
 
     if not targets:
         if not quiet:
-            print("No .opus files found.", file=sys.stderr)
+            print(f"No {ext} files found.", file=sys.stderr)
         return 0
 
+    label = ext.strip('.').upper()
     started = time.time()
     oks = warns = errs = 0
     results: List[Dict[str, Any]] = []
 
-    pbar = _make_pbar(len(targets), "Scanning Opus", quiet)
+    pbar = _make_pbar(len(targets), f"Scanning {label}", quiet)
     ex: Optional[ThreadPoolExecutor] = None
     futures: Dict = {}
 
@@ -1148,7 +924,10 @@ def run_opus_mode(
 
     try:
         ex = ThreadPoolExecutor(max_workers=max(1, workers))
-        futures = {ex.submit(_scan_one_opus, p, ffmpeg_path): p for p in targets}
+        futures = {
+            ex.submit(_scan_one_file, p, ffmpeg_path, enrich=enrich): p
+            for p in targets
+        }
 
         for fut in as_completed(futures):
             row = fut.result()
@@ -1163,12 +942,11 @@ def run_opus_mode(
             if not (only_errors and status == "ok"):
                 results.append(row)
 
-            if pbar:
-                pbar.update(1)
+            pbar.update(1)
 
     except KeyboardInterrupt:
         if not quiet:
-            print("\nInterrupted by user. Cancelling Opus scan…", file=sys.stderr)
+            print(f"\nInterrupted by user. Cancelling {label} scan…", file=sys.stderr)
         if ex is not None:
             for f in futures:
                 f.cancel()
@@ -1177,15 +955,14 @@ def run_opus_mode(
     finally:
         if ex is not None:
             ex.shutdown(wait=True)
-        if pbar:
-            pbar.close()
+        pbar.close()
 
     elapsed = time.time() - started
-    out_path = Path(output or DEFAULT_OPUS_OUTPUT).expanduser().resolve()
+    out_path = Path(output or default_output).expanduser().resolve()
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(out_path, "w", encoding="utf-8") as f:
-        f.write("OPUS INTEGRITY REPORT\n")
+        f.write(f"{report_title}\n")
         f.write(f"Root: {root_path}\n")
         f.write(f"Scanned: {len(targets)}  OK: {oks}  Warn: {warns}  Error: {errs}\n")
         f.write(f"Elapsed: {elapsed:.1f}s\n")
@@ -1203,6 +980,10 @@ def run_opus_mode(
                 f.write(f"  {rel}\n")
                 if r.get("details"):
                     f.write(f"    {r['details']}\n")
+                if enrich:
+                    meta = _format_row_meta(r)
+                    if meta:
+                        f.write(f"    {meta}\n")
                 f.write("\n")
 
         if warn_rows:
@@ -1220,6 +1001,11 @@ def run_opus_mode(
             f.write("-" * 40 + "\n")
             for r in ok_rows:
                 rel = os.path.relpath(r["path"], str(root_path))
+                if enrich:
+                    meta = _format_row_meta(r)
+                    if meta:
+                        f.write(f"  {rel}  [{meta}]\n")
+                        continue
                 f.write(f"  {rel}\n")
 
     if not quiet:
@@ -1229,8 +1015,32 @@ def run_opus_mode(
     return 1 if errs > 0 else 0
 
 
+def run_mp3_mode(
+        root: str, output: str, workers: int, ffmpeg: Optional[str],
+        *, only_errors: bool, verbose: bool, quiet: bool,
+) -> int:
+    return _run_decode_scan(
+        root, output, workers, ffmpeg,
+        ext=".mp3", report_title="MP3 INTEGRITY REPORT",
+        default_output=DEFAULT_MP3_OUTPUT, ffmpeg_required=False,
+        enrich=True, only_errors=only_errors, verbose=verbose, quiet=quiet,
+    )
+
+
+def run_opus_mode(
+        root: str, output: str, workers: int, ffmpeg: Optional[str],
+        *, only_errors: bool, verbose: bool, quiet: bool,
+) -> int:
+    return _run_decode_scan(
+        root, output, workers, ffmpeg,
+        ext=".opus", report_title="OPUS INTEGRITY REPORT",
+        default_output=DEFAULT_OPUS_OUTPUT, ffmpeg_required=True,
+        enrich=False, only_errors=only_errors, verbose=verbose, quiet=quiet,
+    )
+
+
 # =====================================
-# Mode: Extract cover art (NEW)
+# Mode: Extract cover art
 # =====================================
 
 def _extract_art_from_flac(filepath: str) -> Optional[bytes]:
@@ -1352,19 +1162,7 @@ def _extract_best_art(directory: str) -> Optional[bytes]:
 
 def _has_embedded_art(directory: str) -> bool:
     """Quick check: does any audio file in this directory have embedded art?"""
-    try:
-        dir_files = os.listdir(directory)
-    except OSError:
-        return False
-
-    for f in dir_files:
-        ext = os.path.splitext(f)[1].lower()
-        extractor = _ART_EXTRACTORS.get(ext)
-        if extractor:
-            data = extractor(os.path.join(directory, f))
-            if data:
-                return True
-    return False
+    return _extract_best_art(directory) is not None
 
 
 def run_extract_art(root: str, *, quiet: bool = False, dry_run: bool = False) -> int:
@@ -1386,7 +1184,7 @@ def run_extract_art(root: str, *, quiet: bool = False, dry_run: bool = False) ->
 
         # Only process directories that contain audio files
         has_audio = any(
-            os.path.splitext(f)[1].lower() in AUDIO_EXTENSIONS for f in files
+            is_audio(f) for f in files
         )
         if not has_audio:
             continue
@@ -1426,7 +1224,7 @@ def run_extract_art(root: str, *, quiet: bool = False, dry_run: bool = False) ->
 
 
 # =====================================
-# Mode: Missing art report (NEW)
+# Mode: Missing art report
 # =====================================
 
 def run_missing_art(root: str, output: str, *, quiet: bool = False) -> int:
@@ -1445,7 +1243,7 @@ def run_missing_art(root: str, output: str, *, quiet: bool = False) -> int:
         dirs[:] = [d for d in dirs if not d.startswith('.')]
 
         audio_files = [
-            f for f in files if os.path.splitext(f)[1].lower() in AUDIO_EXTENSIONS
+            f for f in files if is_audio(f)
         ]
         if not audio_files:
             continue
@@ -1505,7 +1303,7 @@ def run_missing_art(root: str, output: str, *, quiet: bool = False) -> int:
 
 
 # =====================================
-# Mode: Duplicate detection (NEW)
+# Mode: Duplicate detection
 # =====================================
 
 def run_duplicates(root: str, output: str, *, quiet: bool = False) -> int:
@@ -1525,7 +1323,7 @@ def run_duplicates(root: str, output: str, *, quiet: bool = False) -> int:
         dirs[:] = [d for d in dirs if not d.startswith('.')]
 
         audio_files = [
-            f for f in files if os.path.splitext(f)[1].lower() in AUDIO_EXTENSIONS
+            f for f in files if is_audio(f)
         ]
         if not audio_files:
             continue
@@ -1575,7 +1373,7 @@ def run_duplicates(root: str, output: str, *, quiet: bool = False) -> int:
 
 
 # =====================================
-# Mode: Tag audit (NEW)
+# Mode: Tag audit
 # =====================================
 
 def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
@@ -1591,7 +1389,6 @@ def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
         print(f"Auditing tags under: {root}")
 
     total = count_audio_files(root)
-    current = 0
     pbar = _make_pbar(total, "Auditing tags", quiet)
 
     for dirpath, dirs, files in os.walk(root):
@@ -1602,9 +1399,7 @@ def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
             if ext not in AUDIO_EXTENSIONS:
                 continue
 
-            current += 1
-            if pbar:
-                pbar.update(1)
+            pbar.update(1)
 
             filepath = os.path.join(dirpath, f)
             t = get_all_tags(filepath)
@@ -1626,8 +1421,7 @@ def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
                     "missing": ", ".join(missing_fields),
                 })
 
-    if pbar:
-        pbar.close()
+    pbar.close()
 
     out_path = os.path.abspath(output or DEFAULT_TAG_AUDIT_OUTPUT)
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
@@ -1673,6 +1467,213 @@ def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
 
 
 # =====================================
+# Mode: Library statistics
+# =====================================
+DEFAULT_STATS_OUTPUT = "library_stats.txt"
+
+
+def _format_size(size_bytes: int) -> str:
+    """Format byte count into human-readable string."""
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 ** 2:
+        return f"{size_bytes / 1024:.1f} KB"
+    elif size_bytes < 1024 ** 3:
+        return f"{size_bytes / (1024 ** 2):.1f} MB"
+    else:
+        return f"{size_bytes / (1024 ** 3):.2f} GB"
+
+
+def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> int:
+    """Generate a library-wide statistics report."""
+    root = os.path.abspath(root)
+
+    total_files = count_audio_files(root)
+    if total_files == 0:
+        if not quiet:
+            print(f"No audio files found under: {root}")
+        return 0
+
+    if not quiet:
+        print(f"Scanning {total_files} files under: {root}")
+
+    pbar = _make_pbar(total_files, "Gathering stats", quiet)
+
+    # Accumulators
+    format_counts: Counter = Counter()
+    format_sizes: Counter = Counter()
+    genre_counts: Counter = Counter()
+    artist_counts: Counter = Counter()
+    rating_counts: Dict[str, int] = {
+        "★★★★★ (5)": 0, "★★★★☆ (4)": 0, "★★★☆☆ (3)": 0,
+        "★★☆☆☆ (2)": 0, "★☆☆☆☆ (1)": 0, "unrated": 0,
+    }
+    total_size = 0
+    total_duration = 0.0
+    album_dirs: set = set()
+    artist_dirs: set = set()
+    bitrates: List[int] = []
+    fully_tagged = 0  # has title + artist + track + genre
+
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+
+        for f in sorted(files):
+            ext = os.path.splitext(f)[1].lower()
+            if ext not in AUDIO_EXTENSIONS:
+                continue
+
+            filepath = os.path.join(dirpath, f)
+            format_counts[ext] += 1
+
+            try:
+                fsize = os.path.getsize(filepath)
+                total_size += fsize
+                format_sizes[ext] += fsize
+            except OSError:
+                fsize = 0
+
+            t = get_all_tags(filepath)
+
+            # Artist/album tracking from directory structure
+            rel = os.path.relpath(dirpath, root)
+            parts = rel.split(os.sep)
+            if len(parts) >= 1:
+                artist_dirs.add(parts[0])
+            if len(parts) >= 2:
+                album_dirs.add(rel)
+
+            # Artist from tags (prefer tag, fall back to directory)
+            artist_name = t.artist or (parts[0] if parts else None)
+            if artist_name:
+                artist_counts[artist_name] += 1
+
+            if t.genre:
+                genre_counts[t.genre] += 1
+
+            if t.rating is not None:
+                r = int(t.rating)
+                if r >= 5:
+                    rating_counts["★★★★★ (5)"] += 1
+                elif r >= 4:
+                    rating_counts["★★★★☆ (4)"] += 1
+                elif r >= 3:
+                    rating_counts["★★★☆☆ (3)"] += 1
+                elif r >= 2:
+                    rating_counts["★★☆☆☆ (2)"] += 1
+                else:
+                    rating_counts["★☆☆☆☆ (1)"] += 1
+            else:
+                rating_counts["unrated"] += 1
+
+            # Duration and bitrate — now carried by TagBundle
+            if t.duration_s:
+                total_duration += t.duration_s
+            if t.bitrate_kbps:
+                bitrates.append(t.bitrate_kbps)
+
+            # Fully tagged check
+            has_all = all([t.title, t.artist, t.trackno is not None, t.genre])
+            if has_all:
+                fully_tagged += 1
+
+            pbar.update(1)
+
+    pbar.close()
+
+    # Build report
+    lines: List[str] = []
+    lines.append("LIBRARY STATISTICS")
+    lines.append(f"Root: {root}")
+    lines.append("=" * 60)
+    lines.append("")
+
+    # Overview
+    lines.append("OVERVIEW")
+    lines.append("-" * 40)
+    lines.append(f"  Total files:    {total_files}")
+    lines.append(f"  Total size:     {_format_size(total_size)}")
+    if total_duration > 0:
+        hours = int(total_duration // 3600)
+        mins = int((total_duration % 3600) // 60)
+        lines.append(f"  Total duration: {hours}h {mins}m")
+    lines.append(f"  Artists:        {len(artist_dirs)}")
+    lines.append(f"  Albums:         {len(album_dirs)}")
+    pct_tagged = (fully_tagged / total_files * 100) if total_files else 0
+    lines.append(f"  Fully tagged:   {fully_tagged}/{total_files} ({pct_tagged:.0f}%)")
+    lines.append("")
+
+    # Format breakdown
+    lines.append("FORMAT BREAKDOWN")
+    lines.append("-" * 40)
+    for ext, count in format_counts.most_common():
+        pct = count / total_files * 100
+        size_str = _format_size(format_sizes[ext])
+        lines.append(f"  {ext:<8} {count:>6} files  ({pct:>5.1f}%)  {size_str:>10}")
+    lines.append("")
+
+    # Bitrate summary
+    if bitrates:
+        lines.append("BITRATE")
+        lines.append("-" * 40)
+        avg_br = sum(bitrates) / len(bitrates)
+        min_br = min(bitrates)
+        max_br = max(bitrates)
+        lines.append(f"  Average: {avg_br:.0f} kbps")
+        lines.append(f"  Range:   {min_br}–{max_br} kbps")
+        # Flag low-quality files
+        low_quality = sum(1 for b in bitrates if b < 192)
+        if low_quality:
+            lines.append(f"  Below 192 kbps: {low_quality} files")
+        lines.append("")
+
+    # Rating distribution
+    rated = total_files - rating_counts["unrated"]
+    lines.append(f"RATINGS ({rated} rated, {rating_counts['unrated']} unrated)")
+    lines.append("-" * 40)
+    for label in ["★★★★★ (5)", "★★★★☆ (4)", "★★★☆☆ (3)", "★★☆☆☆ (2)", "★☆☆☆☆ (1)"]:
+        count = rating_counts[label]
+        if count > 0:
+            bar_len = min(30, int(count / max(1, total_files) * 150))
+            bar = "█" * bar_len
+            lines.append(f"  {label}  {count:>5}  {bar}")
+    lines.append("")
+
+    # Genre distribution (top 15)
+    if genre_counts:
+        lines.append(f"GENRES (top 15 of {len(genre_counts)})")
+        lines.append("-" * 40)
+        for genre, count in genre_counts.most_common(15):
+            pct = count / total_files * 100
+            lines.append(f"  {genre:<30} {count:>5}  ({pct:.1f}%)")
+        lines.append("")
+
+    # Top artists (top 15)
+    if artist_counts:
+        lines.append(f"TOP ARTISTS (by track count, top 15 of {len(artist_counts)})")
+        lines.append("-" * 40)
+        for artist, count in artist_counts.most_common(15):
+            lines.append(f"  {artist:<35} {count:>5} tracks")
+        lines.append("")
+
+    report = "\n".join(lines) + "\n"
+
+    # Write to file if output specified, otherwise stdout
+    if output:
+        out_path = os.path.abspath(output)
+        os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(report)
+        if not quiet:
+            print(f"\nStatistics written to: {out_path}")
+    else:
+        print()
+        print(report)
+
+    return 0
+
+
+# =====================================
 # CLI wiring
 # =====================================
 
@@ -1684,6 +1685,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
     group = p.add_mutually_exclusive_group()
     group.add_argument("--library", action="store_true", help="Generate library tree")
+    group.add_argument("--ai-library", dest="ai_library", action="store_true",
+                        help="Generate token-efficient library for AI recommendations")
     group.add_argument("--testFLAC", action="store_true", help="Verify FLAC files")
     group.add_argument("--testMP3", action="store_true", help="Verify MP3 files")
     group.add_argument("--testOpus", action="store_true", help="Verify Opus files via FFmpeg decode")
@@ -1691,6 +1694,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--missingArt", action="store_true", help="Report directories missing cover art")
     group.add_argument("--duplicates", action="store_true", help="Detect duplicate artist+album across formats")
     group.add_argument("--auditTags", action="store_true", help="Report files with incomplete tags")
+    group.add_argument("--stats", action="store_true", help="Library-wide statistics summary")
 
     p.add_argument("--root", default=".", help="Root directory (default: current)")
     p.add_argument("--output", default=None, help="Output path")
@@ -1727,6 +1731,11 @@ def _prompt_str(label: str, default: Optional[str]) -> str:
     return raw or (default or "")
 
 
+def _prompt_path(label: str, default: str = ".") -> str:
+    """Prompt for a filesystem path, expanding ~ and making absolute."""
+    return os.path.abspath(os.path.expanduser(_prompt_str(label, default)))
+
+
 def _prompt_int(label: str, default: int) -> int:
     s = _prompt_str(label, str(default))
     try:
@@ -1747,28 +1756,30 @@ def interactive_menu() -> int:
         print("6) Report missing art")
         print("7) Find duplicate albums")
         print("8) Audit tags (missing title/artist/track/genre)")
+        print("9) Library statistics")
+        print("10) AI-readable library export")
         print("q) Quit")
         try:
-            choice = input("Select [1-8/q]: ").strip().lower()
+            choice = input("Select [1-10/q]: ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             return 130
 
         if choice in ("1", "l", "lib"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_LIBRARY_OUTPUT) or DEFAULT_LIBRARY_OUTPUT
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             write_music_library_tree(root, output, quiet=False, show_genre=show_g)
             print(f"\nMusic library written to {output}")
 
         elif choice in ("2", "flac"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_FLAC_OUTPUT) or DEFAULT_FLAC_OUTPUT
             workers = _prompt_int("Workers", 4)
             pref = _prompt_str("Preferred tool (flac/ffmpeg)", "flac").lower()
             run_flac_mode(root, output, workers, pref, quiet=False)
 
         elif choice in ("3", "mp3"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_MP3_OUTPUT) or DEFAULT_MP3_OUTPUT
             workers = _prompt_int("Workers", 4)
             include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
@@ -1778,7 +1789,7 @@ def interactive_menu() -> int:
             )
 
         elif choice in ("4", "opus"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_OPUS_OUTPUT) or DEFAULT_OPUS_OUTPUT
             workers = _prompt_int("Workers", 4)
             include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
@@ -1788,24 +1799,34 @@ def interactive_menu() -> int:
             )
 
         elif choice in ("5", "art", "extract"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             dry = _prompt_str("Dry run? (y/N)", "N").lower().startswith('y')
             run_extract_art(root, quiet=False, dry_run=dry)
 
         elif choice in ("6", "missing"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_MISSING_ART_OUTPUT) or DEFAULT_MISSING_ART_OUTPUT
             run_missing_art(root, output, quiet=False)
 
         elif choice in ("7", "dup", "dupes"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_DUPLICATES_OUTPUT) or DEFAULT_DUPLICATES_OUTPUT
             run_duplicates(root, output, quiet=False)
 
         elif choice in ("8", "audit", "tags"):
-            root = os.path.abspath(os.path.expanduser(_prompt_str("Root directory", ".")))
+            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_TAG_AUDIT_OUTPUT) or DEFAULT_TAG_AUDIT_OUTPUT
             run_tag_audit(root, output, quiet=False)
+
+        elif choice in ("9", "stats"):
+            root = _prompt_path("Root directory")
+            output = _prompt_str("Output file (leave blank for screen)", "").strip() or None
+            run_stats(root, output, quiet=False)
+
+        elif choice in ("10", "ai", "ai-library"):
+            root = _prompt_path("Root directory")
+            output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
+            write_ai_library(root, output, quiet=False)
 
         elif choice in ("q", "quit", "exit"):
             return 0
@@ -1821,11 +1842,16 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     try:
         args = build_parser().parse_args(argv)
-        root = os.path.abspath(args.root)
+        root = os.path.abspath(os.path.expanduser(args.root))
 
         if args.library:
             output = args.output or DEFAULT_LIBRARY_OUTPUT
             write_music_library_tree(root, output, quiet=args.quiet, show_genre=args.genres)
+            return 0
+
+        if args.ai_library:
+            output = args.output or DEFAULT_AI_LIBRARY_OUTPUT
+            write_ai_library(root, output, quiet=args.quiet)
             return 0
 
         if args.testFLAC:
@@ -1860,6 +1886,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.auditTags:
             output = args.output or DEFAULT_TAG_AUDIT_OUTPUT
             return run_tag_audit(root, output, quiet=args.quiet)
+
+        if args.stats:
+            return run_stats(root, args.output, quiet=args.quiet)
 
         build_parser().print_help()
         return 2
