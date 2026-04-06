@@ -52,7 +52,7 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 | **Tag audit** | `--auditTags` | Reports files missing title, artist, track number, or genre to text |
 | **Version** | `--version` | Prints version and exits |
 
-Running with no arguments launches an interactive menu.
+Running with no arguments launches an interactive TUI — a full-screen curses interface with arrow-key navigation, color-coded section groups (Library, Integrity, Artwork, Metadata), and a highlighted selection cursor. Menus, parameter prompts, and pause screens all render inside styled Unicode boxes for a consistent experience. Library tree, AI export, and genre wings live in a dedicated submenu. Falls back to typed input if curses is unavailable.
 
 ## Requirements
 

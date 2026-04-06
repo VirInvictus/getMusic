@@ -53,6 +53,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import NamedTuple, Tuple, List, Optional, Dict, Any
 
+try:
+    import curses
+    HAVE_CURSES = True
+except ImportError:
+    HAVE_CURSES = False
+
 
 class TagBundle(NamedTuple):
     """All metadata we care about, extracted once per file."""
@@ -98,7 +104,7 @@ except ImportError:
 # =====================================
 # Constants
 # =====================================
-VERSION = "2.3.0"
+VERSION = "3.0.0"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
@@ -1857,8 +1863,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def _prompt_str(label: str, default: Optional[str]) -> str:
+    if _USE_CURSES:
+        return _tui_prompt_str(label, default)
     try:
-        raw = input(f"{label} [{default}]: ").strip()
+        raw = input(f"  {label} [{default}]: ").strip()
     except (EOFError, KeyboardInterrupt):
         sys.exit(130)
     return raw or (default or "")
@@ -1877,42 +1885,493 @@ def _prompt_int(label: str, default: int) -> int:
         return default
 
 
-def interactive_menu() -> int:
-    while True:
-        _reset_terminal()
-        print("\n=== getMusic.py — Menu ===")
-        print("1) Build music library tree")
-        print("2) Test FLAC integrity")
-        print("3) Test MP3 decode errors")
-        print("4) Test Opus decode errors")
-        print("5) Extract cover art")
-        print("6) Report missing art")
-        print("7) Find duplicate albums")
-        print("8) Audit tags (missing title/artist/track/genre)")
-        print("9) Library statistics")
-        print("10) AI-readable library export")
-        print("11) Generate all wings (per-genre libraries)")
-        print("q) Quit")
-        try:
-            choice = input("Select [1-11/q]: ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            return 130
+def _box_menu(title: str, sections: list, width: int = 44) -> None:
+    """Fallback text menu for environments without curses."""
+    iw = width - 4
+    print(f"\n  ╔{'═' * (width - 2)}╗")
+    print(f"  ║ {title:^{iw}} ║")
+    print(f"  ╠{'═' * (width - 2)}╣")
+    first = True
+    for header, items in sections:
+        if not first:
+            print(f"  ╟{'─' * (width - 2)}╢")
+        first = False
+        if header:
+            print(f"  ║  {header:<{iw - 1}} ║")
+        for item in items:
+            print(f"  ║    {item:<{iw - 3}} ║")
+    print(f"  ╚{'═' * (width - 2)}╝")
 
-        if choice in ("1", "l", "lib"):
+
+def _pause() -> None:
+    """Wait for user acknowledgement before redrawing."""
+    if _USE_CURSES:
+        _tui_pause()
+        return
+    try:
+        input("\n  Press Enter to continue...")
+    except (EOFError, KeyboardInterrupt):
+        pass
+
+
+# =====================================
+# Curses TUI
+# =====================================
+
+_CP_FRAME = 1
+_CP_TITLE = 2
+_CP_HEADER = 3
+_CP_ITEM = 4
+_CP_SELECTED = 5
+_CP_HINT = 6
+
+
+def _init_tui_colors() -> None:
+    """Set up curses color pairs for the TUI menus."""
+    curses.start_color()
+    curses.use_default_colors()
+    curses.init_pair(_CP_FRAME, curses.COLOR_CYAN, -1)
+    curses.init_pair(_CP_TITLE, curses.COLOR_WHITE, -1)
+    curses.init_pair(_CP_HEADER, curses.COLOR_YELLOW, -1)
+    curses.init_pair(_CP_ITEM, curses.COLOR_WHITE, -1)
+    curses.init_pair(_CP_SELECTED, curses.COLOR_BLACK, curses.COLOR_CYAN)
+    curses.init_pair(_CP_HINT, curses.COLOR_WHITE, -1)
+
+
+_TUI_BOX_W = 46
+_TUI_INNER = _TUI_BOX_W - 2  # chars between the two ║ borders
+
+
+def _safe_addstr(stdscr, y: int, x: int, text: str, attr: int) -> None:
+    """Write to curses screen, silently ignoring out-of-bounds errors."""
+    try:
+        stdscr.addstr(y, x, text, attr)
+    except curses.error:
+        pass
+
+
+def _tui_select(title: str, sections: list,
+                hints: str = "\u2191\u2193 Navigate  \u23ce Select  q Quit") -> Optional[tuple]:
+    """Full-screen arrow-key menu using curses.
+
+    sections: list of (header_or_empty, [item_labels]).
+    Returns (section_idx, item_idx) on Enter, None on q/Esc.
+    """
+    BOX_W = _TUI_BOX_W
+    INNER = _TUI_INNER
+
+    # Flatten into a selectable-item list
+    flat: list[tuple[int, int]] = []
+    for si, (_, items) in enumerate(sections):
+        for ii in range(len(items)):
+            flat.append((si, ii))
+
+    def _draw(stdscr, cur: int) -> None:
+        stdscr.erase()
+        h, w = stdscr.getmaxyx()
+        bx = max(0, (w - BOX_W) // 2)
+        fa = curses.color_pair(_CP_FRAME)
+
+        # Calculate total box height for vertical centering
+        box_h = 3  # top border + title + mid border
+        for si, (hdr, items) in enumerate(sections):
+            if si > 0:
+                box_h += 1
+            if hdr:
+                box_h += 1
+            box_h += len(items)
+        box_h += 1  # bottom border
+
+        y = max(0, (h - box_h - 2) // 2)
+
+        # Top border
+        _safe_addstr(stdscr, y, bx, "\u2554" + "\u2550" * INNER + "\u2557", fa)
+        y += 1
+
+        # Title (bold white, centered)
+        _safe_addstr(stdscr, y, bx, "\u2551", fa)
+        _safe_addstr(stdscr, y, bx + 1, f" {title:^{INNER - 2}} ",
+              curses.color_pair(_CP_TITLE) | curses.A_BOLD)
+        _safe_addstr(stdscr, y, bx + BOX_W - 1, "\u2551", fa)
+        y += 1
+
+        # Title/body separator
+        _safe_addstr(stdscr, y, bx, "\u2560" + "\u2550" * INNER + "\u2563", fa)
+        y += 1
+
+        idx = 0
+        for si, (hdr, items) in enumerate(sections):
+            # Section separator (except first)
+            if si > 0:
+                _safe_addstr(stdscr, y, bx, "\u255f" + "\u2500" * INNER + "\u2562", fa)
+                y += 1
+
+            # Section header (bold yellow)
+            if hdr:
+                content = f"  {hdr}" + " " * (INNER - len(hdr) - 2)
+                _safe_addstr(stdscr, y, bx, "\u2551", fa)
+                _safe_addstr(stdscr, y, bx + 1, content,
+                      curses.color_pair(_CP_HEADER) | curses.A_BOLD)
+                _safe_addstr(stdscr, y, bx + BOX_W - 1, "\u2551", fa)
+                y += 1
+
+            # Selectable items
+            for ii, label in enumerate(items):
+                is_sel = idx == cur
+                if is_sel:
+                    text = f" \u25ba {label}"
+                    attr = curses.color_pair(_CP_SELECTED) | curses.A_BOLD
+                else:
+                    text = f"   {label}"
+                    attr = curses.color_pair(_CP_ITEM)
+                padded = text + " " * max(0, INNER - len(text))
+                _safe_addstr(stdscr, y, bx, "\u2551", fa)
+                _safe_addstr(stdscr, y, bx + 1, padded[:INNER], attr)
+                _safe_addstr(stdscr, y, bx + BOX_W - 1, "\u2551", fa)
+                y += 1
+                idx += 1
+
+        # Bottom border
+        _safe_addstr(stdscr, y, bx, "\u255a" + "\u2550" * INNER + "\u255d", fa)
+        y += 2
+
+        # Hint bar (centered, dim)
+        hx = max(0, (w - len(hints)) // 2)
+        _safe_addstr(stdscr, y, hx, hints,
+              curses.color_pair(_CP_HINT) | curses.A_DIM)
+
+        stdscr.refresh()
+
+    def _run(stdscr) -> Optional[tuple]:
+        _init_tui_colors()
+        curses.curs_set(0)
+        cur = 0
+        while True:
+            _draw(stdscr, cur)
+            key = stdscr.getch()
+            if key in (curses.KEY_UP, ord('k')):
+                cur = (cur - 1) % len(flat)
+            elif key in (curses.KEY_DOWN, ord('j')):
+                cur = (cur + 1) % len(flat)
+            elif key in (curses.KEY_ENTER, 10, 13):
+                return flat[cur]
+            elif key in (ord('q'), ord('Q'), 27):
+                return None
+            elif key == curses.KEY_RESIZE:
+                pass  # redraws on next loop iteration
+
+    try:
+        return curses.wrapper(_run)
+    except curses.error:
+        return None
+
+
+def _tui_prompt_str(label: str, default: Optional[str]) -> str:
+    """Curses-based single-line text prompt styled like the TUI menus."""
+    BOX_W = _TUI_BOX_W
+    INNER = _TUI_INNER
+
+    def _run(stdscr) -> str:
+        _init_tui_colors()
+        curses.curs_set(1)
+        buf = list(default or "")
+
+        while True:
+            stdscr.erase()
+            h, w = stdscr.getmaxyx()
+            bx = max(0, (w - BOX_W) // 2)
+            fa = curses.color_pair(_CP_FRAME)
+
+            y = max(0, (h - 8) // 2)
+
+            # Top border
+            _safe_addstr(stdscr, y, bx, "\u2554" + "\u2550" * INNER + "\u2557", fa)
+            y += 1
+
+            # Label row
+            lbl = f"  {label}"
+            padded_lbl = lbl + " " * max(0, INNER - len(lbl))
+            _safe_addstr(stdscr, y, bx, "\u2551", fa)
+            _safe_addstr(stdscr, y, bx + 1, padded_lbl[:INNER],
+                         curses.color_pair(_CP_HEADER) | curses.A_BOLD)
+            _safe_addstr(stdscr, y, bx + BOX_W - 1, "\u2551", fa)
+            y += 1
+
+            # Separator
+            _safe_addstr(stdscr, y, bx, "\u255f" + "\u2500" * INNER + "\u2562", fa)
+            y += 1
+
+            # Input field
+            display = "".join(buf)
+            max_input = INNER - 4
+            if len(display) > max_input:
+                visible = "\u2026" + display[-(max_input - 1):]
+            else:
+                visible = display
+            input_text = f" > {visible}" + " " * max(0, INNER - len(visible) - 3)
+            _safe_addstr(stdscr, y, bx, "\u2551", fa)
+            _safe_addstr(stdscr, y, bx + 1, input_text[:INNER],
+                         curses.color_pair(_CP_ITEM))
+            _safe_addstr(stdscr, y, bx + BOX_W - 1, "\u2551", fa)
+            input_y = y
+            y += 1
+
+            # Bottom border
+            _safe_addstr(stdscr, y, bx, "\u255a" + "\u2550" * INNER + "\u255d", fa)
+            y += 2
+
+            # Hints
+            hints = "\u23ce Confirm  Esc Default"
+            hx = max(0, (w - len(hints)) // 2)
+            _safe_addstr(stdscr, y, hx, hints,
+                         curses.color_pair(_CP_HINT) | curses.A_DIM)
+
+            # Position cursor
+            cursor_x = bx + 4 + min(len(display), max_input)
+            try:
+                stdscr.move(input_y, min(cursor_x, bx + BOX_W - 2))
+            except curses.error:
+                pass
+            stdscr.refresh()
+
+            key = stdscr.getch()
+            if key in (curses.KEY_ENTER, 10, 13):
+                result = "".join(buf).strip()
+                return result if result else (default or "")
+            elif key == 27:  # Escape — use default
+                return default or ""
+            elif key in (curses.KEY_BACKSPACE, 127, 8):
+                if buf:
+                    buf.pop()
+            elif key == curses.KEY_RESIZE:
+                pass
+            elif 32 <= key <= 126:
+                buf.append(chr(key))
+
+    try:
+        return curses.wrapper(_run)
+    except curses.error:
+        # Fall back to plain input
+        try:
+            raw = input(f"  {label} [{default}]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            sys.exit(130)
+        return raw or (default or "")
+
+
+def _tui_pause() -> None:
+    """Curses-based 'press Enter to continue' styled like the TUI menus."""
+    BOX_W = _TUI_BOX_W
+    INNER = _TUI_INNER
+
+    def _run(stdscr) -> None:
+        _init_tui_colors()
+        curses.curs_set(0)
+
+        stdscr.erase()
+        h, w = stdscr.getmaxyx()
+        bx = max(0, (w - BOX_W) // 2)
+        fa = curses.color_pair(_CP_FRAME)
+
+        y = max(0, (h - 5) // 2)
+
+        _safe_addstr(stdscr, y, bx, "\u2554" + "\u2550" * INNER + "\u2557", fa)
+        y += 1
+
+        msg = "Press Enter to continue\u2026"
+        padded = f" {msg:^{INNER - 2}} "
+        _safe_addstr(stdscr, y, bx, "\u2551", fa)
+        _safe_addstr(stdscr, y, bx + 1, padded[:INNER],
+                     curses.color_pair(_CP_TITLE) | curses.A_BOLD)
+        _safe_addstr(stdscr, y, bx + BOX_W - 1, "\u2551", fa)
+        y += 1
+
+        _safe_addstr(stdscr, y, bx, "\u255a" + "\u2550" * INNER + "\u255d", fa)
+        stdscr.refresh()
+
+        while True:
+            key = stdscr.getch()
+            if key in (curses.KEY_ENTER, 10, 13, ord('q'), ord('Q'), 27):
+                return
+
+    try:
+        curses.wrapper(_run)
+    except curses.error:
+        try:
+            input("\n  Press Enter to continue...")
+        except (EOFError, KeyboardInterrupt):
+            pass
+
+
+# =====================================
+# Fallback (non-curses) menu input
+# =====================================
+
+_MAIN_FALLBACK_MAP: Dict[str, Optional[tuple]] = {
+    "1": (0, 0), "l": (0, 0), "lib": (0, 0), "library": (0, 0),
+    "2": (0, 1), "stats": (0, 1),
+    "3": (1, 0), "flac": (1, 0),
+    "4": (1, 1), "mp3": (1, 1),
+    "5": (1, 2), "opus": (1, 2),
+    "6": (2, 0), "art": (2, 0), "extract": (2, 0),
+    "7": (2, 1), "missing": (2, 1),
+    "8": (3, 0), "dup": (3, 0), "dupes": (3, 0),
+    "9": (3, 1), "audit": (3, 1), "tags": (3, 1),
+    "q": None, "quit": None, "exit": None,
+}
+
+_LIB_FALLBACK_MAP: Dict[str, Optional[tuple]] = {
+    "1": (0, 0), "tree": (0, 0), "lib": (0, 0),
+    "2": (0, 1), "ai": (0, 1),
+    "3": (0, 2), "wings": (0, 2),
+    "b": None, "back": None, "": None,
+}
+
+
+def _fallback_input(prompt: str, mapping: dict) -> Any:
+    """Text-input fallback when curses is unavailable."""
+    try:
+        ch = input(prompt).strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    return mapping.get(ch, "invalid")
+
+
+# =====================================
+# Menu entry points
+# =====================================
+
+_MAIN_SECTIONS = [
+    ("LIBRARY", [
+        "Library tree & exports                  \u2192",
+        "Library statistics",
+    ]),
+    ("INTEGRITY", [
+        "Test FLAC files",
+        "Test MP3 files",
+        "Test Opus files",
+    ]),
+    ("ARTWORK", [
+        "Extract cover art",
+        "Report missing art",
+    ]),
+    ("METADATA", [
+        "Find duplicate albums",
+        "Audit tags",
+    ]),
+    ("", ["Quit"]),
+]
+
+_LIB_SECTIONS = [
+    ("", [
+        "Build music library tree",
+        "AI-readable library export",
+        "Generate all wings (per-genre)",
+    ]),
+    ("", ["Back to main menu"]),
+]
+
+_USE_CURSES = HAVE_CURSES and sys.stdin.isatty()
+
+
+def _select_main() -> Optional[tuple]:
+    """Get a main-menu selection via curses or fallback."""
+    if _USE_CURSES:
+        return _tui_select(f"getMusic v{VERSION}", _MAIN_SECTIONS)
+    _box_menu(f"getMusic v{VERSION}", [
+        ("LIBRARY", ["1) Library tree & exports          \u2192",
+                      "2) Library statistics"]),
+        ("INTEGRITY", ["3) Test FLAC files", "4) Test MP3 files",
+                        "5) Test Opus files"]),
+        ("ARTWORK", ["6) Extract cover art", "7) Report missing art"]),
+        ("METADATA", ["8) Find duplicate albums", "9) Audit tags"]),
+        ("", ["q) Quit"]),
+    ])
+    return _fallback_input("  Select [1-9/q]: ", _MAIN_FALLBACK_MAP)
+
+
+def _select_library() -> Optional[tuple]:
+    """Get a library-submenu selection via curses or fallback."""
+    if _USE_CURSES:
+        return _tui_select("Library Tree & Exports", _LIB_SECTIONS,
+                           hints="\u2191\u2193 Navigate  \u23ce Select  Esc Back")
+    _box_menu("Library Tree & Exports", [
+        ("", ["1) Build music library tree",
+              "2) AI-readable library export",
+              "3) Generate all wings (per-genre)"]),
+        ("", ["b) Back to main menu"]),
+    ])
+    return _fallback_input("  Select [1-3/b]: ", _LIB_FALLBACK_MAP)
+
+
+def _library_submenu() -> None:
+    """Library tree & exports submenu."""
+    while True:
+        result = _select_library()
+
+        if result == "invalid":
+            if not _USE_CURSES:
+                print("  Invalid selection.")
+            continue
+
+        if result is None or result == (1, 0):  # Back / Esc
+            return
+
+        _reset_terminal()
+
+        if result == (0, 0):
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_LIBRARY_OUTPUT) or DEFAULT_LIBRARY_OUTPUT
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             write_music_library_tree(root, output, quiet=False, show_genre=show_g)
-            print(f"\nMusic library written to {output}")
+            print(f"\n  Library written to {output}")
+            _pause()
 
-        elif choice in ("2", "flac"):
+        elif result == (0, 1):
+            root = _prompt_path("Root directory")
+            output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
+            write_ai_library(root, output, quiet=False)
+            _pause()
+
+        elif result == (0, 2):
+            root = _prompt_path("Root directory")
+            outdir = _prompt_str("Output directory", "wings") or "wings"
+            show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
+            write_all_wings(root, outdir, quiet=False, show_genre=show_g)
+            _pause()
+
+
+def interactive_menu() -> int:
+    while True:
+        _reset_terminal()
+        result = _select_main()
+
+        if result == "invalid":
+            if not _USE_CURSES:
+                print("  Invalid selection.")
+            continue
+
+        if result is None or result == (4, 0):  # Quit
+            return 0
+
+        if result == (0, 0):  # Library submenu
+            _library_submenu()
+
+        elif result == (0, 1):  # Stats
+            root = _prompt_path("Root directory")
+            output = _prompt_str("Output file (leave blank for screen)", "").strip() or None
+            run_stats(root, output, quiet=False)
+            _pause()
+
+        elif result == (1, 0):  # FLAC
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_FLAC_OUTPUT) or DEFAULT_FLAC_OUTPUT
             workers = _prompt_int("Workers", 4)
             pref = _prompt_str("Preferred tool (flac/ffmpeg)", "flac").lower()
             run_flac_mode(root, output, workers, pref, quiet=False)
+            _pause()
 
-        elif choice in ("3", "mp3"):
+        elif result == (1, 1):  # MP3
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_MP3_OUTPUT) or DEFAULT_MP3_OUTPUT
             workers = _prompt_int("Workers", 4)
@@ -1921,8 +2380,9 @@ def interactive_menu() -> int:
                 root, output, workers, None,
                 only_errors=not include_ok, verbose=include_ok, quiet=False,
             )
+            _pause()
 
-        elif choice in ("4", "opus"):
+        elif result == (1, 2):  # Opus
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_OPUS_OUTPUT) or DEFAULT_OPUS_OUTPUT
             workers = _prompt_int("Workers", 4)
@@ -1931,47 +2391,31 @@ def interactive_menu() -> int:
                 root, output, workers, None,
                 only_errors=not include_ok, verbose=include_ok, quiet=False,
             )
+            _pause()
 
-        elif choice in ("5", "art", "extract"):
+        elif result == (2, 0):  # Extract art
             root = _prompt_path("Root directory")
             dry = _prompt_str("Dry run? (y/N)", "N").lower().startswith('y')
             run_extract_art(root, quiet=False, dry_run=dry)
+            _pause()
 
-        elif choice in ("6", "missing"):
+        elif result == (2, 1):  # Missing art
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_MISSING_ART_OUTPUT) or DEFAULT_MISSING_ART_OUTPUT
             run_missing_art(root, output, quiet=False)
+            _pause()
 
-        elif choice in ("7", "dup", "dupes"):
+        elif result == (3, 0):  # Duplicates
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_DUPLICATES_OUTPUT) or DEFAULT_DUPLICATES_OUTPUT
             run_duplicates(root, output, quiet=False)
+            _pause()
 
-        elif choice in ("8", "audit", "tags"):
+        elif result == (3, 1):  # Audit tags
             root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_TAG_AUDIT_OUTPUT) or DEFAULT_TAG_AUDIT_OUTPUT
             run_tag_audit(root, output, quiet=False)
-
-        elif choice in ("9", "stats"):
-            root = _prompt_path("Root directory")
-            output = _prompt_str("Output file (leave blank for screen)", "").strip() or None
-            run_stats(root, output, quiet=False)
-
-        elif choice in ("10", "ai", "ai-library"):
-            root = _prompt_path("Root directory")
-            output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
-            write_ai_library(root, output, quiet=False)
-
-        elif choice in ("11", "wings", "all-wings"):
-            root = _prompt_path("Root directory")
-            outdir = _prompt_str("Output directory", "wings") or "wings"
-            show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
-            write_all_wings(root, outdir, quiet=False, show_genre=show_g)
-
-        elif choice in ("q", "quit", "exit"):
-            return 0
-        else:
-            print("Invalid selection.")
+            _pause()
 
 
 def main(argv: Optional[List[str]] = None) -> int:

@@ -1,5 +1,76 @@
 # getMusic.py — Patch Notes
 
+## v3.0.0 (2026-04-06)
+
+---
+
+### Consistent Full-Screen TUI
+
+The entire interactive experience now stays in curses. Previously, selecting a
+menu item dropped to raw `input()` calls for parameter prompts (root directory,
+output file, worker count, etc.) and the post-operation pause, breaking the
+visual flow. All prompts and the pause screen now render inside the same styled
+Unicode boxes as the menus.
+
+**Curses prompts.** `_tui_prompt_str` draws a centered box with a yellow header
+label and a cursor-visible input field. Typing, backspace, Enter to confirm,
+Esc to accept the default — all within the curses session. Since `_prompt_path`
+and `_prompt_int` call `_prompt_str` internally, every parameter prompt in the
+interactive menu gets the TUI treatment automatically.
+
+**Curses pause.** `_tui_pause` replaces the raw `input("Press Enter…")` with a
+styled box. Accepts Enter, q, or Esc to dismiss.
+
+**Fallback preserved.** If curses is unavailable or stdin is not a TTY,
+prompts and pause fall back to plain `input()` — same as before.
+
+All CLI flags (`--library`, `--ai-library`, `--all-wings`, etc.) are unchanged.
+
+---
+
+## v2.4.0 (2026-04-06)
+
+---
+
+### TUI Overhaul: Arrow-Key Navigation
+
+The interactive menu is now a full-screen curses TUI with arrow-key navigation,
+color-coded sections, and a highlighted selection cursor (`►`). No more typing
+numbers — just `↑`/`↓` to move, `Enter` to select, `q` or `Esc` to quit.
+
+The menu is drawn as a centered Unicode box with labeled section groups:
+**Library** (yellow), **Integrity**, **Artwork**, and **Metadata**, separated
+by ruled dividers. The selected item is highlighted in bold cyan reverse video.
+A hint bar at the bottom shows available controls.
+
+**Library submenu.** AI-readable library export and genre wings (all-wings)
+are now nested under a "Library tree & exports" submenu (marked with `→`)
+alongside the standard library tree builder. Selecting it opens a second
+curses menu; `Esc` returns to the main menu. This trims the top-level menu
+from 11 flat items to 10 navigable entries and groups the three library-output
+modes where they logically belong.
+
+**Curses colors:**
+- Cyan box frame
+- Bold yellow section headers
+- Bold cyan-on-black highlight for selected item
+- Dim hint bar
+
+**Fallback path.** If `curses` is unavailable (e.g. `windows-curses` not
+installed) or stdin is not a TTY, the menu falls back to a static boxed
+text display with numbered options and typed input — same layout, just without
+arrow-key navigation.
+
+**Post-operation pause.** Every mode now waits for Enter before redrawing
+the menu, so results aren't immediately scrolled off screen.
+
+**Indented prompts.** All interactive prompts are visually aligned with the
+menu box for a tighter feel.
+
+All CLI flags (`--library`, `--ai-library`, `--all-wings`, etc.) are unchanged.
+
+---
+
 ## v2.3.0 (2026-04-05)
 
 ---
