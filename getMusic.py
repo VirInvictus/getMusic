@@ -104,7 +104,7 @@ except ImportError:
 # =====================================
 # Constants
 # =====================================
-VERSION = "3.0.0"
+VERSION = "3.0.1"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
@@ -371,10 +371,10 @@ def get_all_tags(file_path: str) -> TagBundle:
                     title = _first_text(tit2.text)
                 tpe1 = tags.get('TPE1')
                 tpe2 = tags.get('TPE2')
-                if tpe1:
-                    artist = _first_text(tpe1.text)
-                elif tpe2:
+                if tpe2:
                     artist = _first_text(tpe2.text)
+                elif tpe1:
+                    artist = _first_text(tpe1.text)
                 trck = tags.get('TRCK')
                 if trck:
                     trackno = _parse_track_number(trck.text)
@@ -409,7 +409,7 @@ def get_all_tags(file_path: str) -> TagBundle:
 
         elif isinstance(audio, MP4):
             title = _first_text(tags.get('\xa9nam'))
-            artist = _first_text(tags.get('\xa9ART')) or _first_text(tags.get('aART'))
+            artist = _first_text(tags.get('aART')) or _first_text(tags.get('\xa9ART'))
             trackno = _parse_track_number(tags.get('trkn'))
             album = _first_text(tags.get('\xa9alb'))
             for k in ('\xa9gen', 'gnre'):
@@ -429,10 +429,10 @@ def get_all_tags(file_path: str) -> TagBundle:
             keys = {k.lower(): k for k in tags.keys()}
             if 'title' in keys:
                 title = _first_text(tags[keys['title']])
-            if 'artist' in keys:
-                artist = _first_text(tags[keys['artist']])
-            elif 'albumartist' in keys:
+            if 'albumartist' in keys:
                 artist = _first_text(tags[keys['albumartist']])
+            elif 'artist' in keys:
+                artist = _first_text(tags[keys['artist']])
             if 'tracknumber' in keys:
                 trackno = _parse_track_number(tags[keys['tracknumber']])
             if 'album' in keys:
@@ -450,7 +450,7 @@ def get_all_tags(file_path: str) -> TagBundle:
             name_map = {k.lower(): k for k in tags.keys()}
             if (k := name_map.get('title')):
                 title = _first_text(tags.get(k))
-            if (k := name_map.get('author') or name_map.get('wm/albumartist')):
+            if (k := name_map.get('wm/albumartist') or name_map.get('author')):
                 artist = _first_text(tags.get(k))
             if (k := name_map.get('wm/tracknumber') or name_map.get('tracknumber')):
                 trackno = _parse_track_number(tags.get(k))

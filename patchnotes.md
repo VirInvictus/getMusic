@@ -1,5 +1,19 @@
 # getMusic.py — Patch Notes
 
+## v3.0.1 (2026-04-08)
+
+---
+
+### Bug Fixes
+
+**Album Artist Prioritization.** Fixed an issue where albums were being split up due to featured artists on individual tracks. The tag extractor now consistently prioritizes "Album Artist" over "Artist" across all supported formats:
+- MP3: `TPE2` > `TPE1`
+- FLAC/Ogg/Opus: `albumartist` > `artist`
+- MP4/M4A: `aART` > `\xa9ART`
+- ASF: `wm/albumartist` > `author`
+
+---
+
 ## v3.0.0 (2026-04-06)
 
 ---
