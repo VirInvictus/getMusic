@@ -20,7 +20,7 @@ Usage examples:
   python getMusic.py --library --root ~/Music --output library.txt --genres
   python getMusic.py --ai-library --root ~/Music --output library_ai.txt
   python getMusic.py --all-wings --root ~/Music --output wings/
-  python getMusic.py --all-wings --root ~/Music --output wings/ --genres
+  python getMusic.py --all-wings --root ~/Music --output wings/ --genres --paths
   python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
   python getMusic.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
   python getMusic.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
@@ -104,7 +104,7 @@ except ImportError:
 # =====================================
 # Constants
 # =====================================
-VERSION = "3.0.1"
+VERSION = "3.1.0"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
@@ -705,7 +705,7 @@ def _scan_genres(root_dir: str, quiet: bool = False) -> Dict[str, List[Tuple[str
 
 
 def write_all_wings(root_dir: str, outdir: str, *, quiet: bool = False,
-                    show_genre: bool = False) -> int:
+                    show_genre: bool = False, show_paths: bool = False) -> int:
     """Generate a separate library tree file for each genre.
 
     Scans the entire library (root/Artist/Album/songs) to determine each
@@ -753,12 +753,14 @@ def write_all_wings(root_dir: str, outdir: str, *, quiet: bool = False,
                         f.write("      └── [No Audio Files Found]\n")
                         continue
 
+                    genre_str = ""
                     if show_genre:
                         first_tag = get_all_tags(os.path.join(album_path, songs[0]))
-                        genre_str = f" ({first_tag.genre})" if first_tag.genre else ""
-                        f.write(f"  {connector} ALBUM: {album}{genre_str}\n")
-                    else:
-                        f.write(f"  {connector} ALBUM: {album}\n")
+                        if first_tag.genre:
+                            genre_str = f" ({first_tag.genre})"
+                    
+                    path_str = f" [{album_path}]" if show_paths else ""
+                    f.write(f"  {connector} ALBUM: {album}{genre_str}{path_str}\n")
 
                     for j, song in enumerate(songs):
                         song_path = os.path.join(album_path, song)
@@ -1841,6 +1843,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--prefer", choices=["flac", "ffmpeg"], default="flac", help="Preferred tool (FLAC mode)")
     p.add_argument("--quiet", action="store_true", help="Minimize output")
     p.add_argument("--genres", action="store_true", help="Include album genres in library tree")
+    p.add_argument("--paths", action="store_true", help="Include absolute directory paths at the album level")
     p.add_argument("--dry-run", dest="dry_run", action="store_true",
                     help="Preview changes without writing (extractArt)")
 
@@ -2337,7 +2340,8 @@ def _library_submenu() -> None:
             root = _prompt_path("Root directory")
             outdir = _prompt_str("Output directory", "wings") or "wings"
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
-            write_all_wings(root, outdir, quiet=False, show_genre=show_g)
+            show_p = _prompt_str("Include paths? (y/N)", "N").lower().startswith('y')
+            write_all_wings(root, outdir, quiet=False, show_genre=show_g, show_paths=show_p)
             _pause()
 
 
@@ -2440,7 +2444,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if args.all_wings:
             outdir = args.output or "wings"
-            return write_all_wings(root, outdir, quiet=args.quiet, show_genre=args.genres)
+            return write_all_wings(root, outdir, quiet=args.quiet, show_genre=args.genres, show_paths=args.paths)
 
         if args.testFLAC:
             output = args.output or DEFAULT_FLAC_OUTPUT

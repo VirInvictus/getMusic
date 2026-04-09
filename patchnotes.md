@@ -1,4 +1,14 @@
-# getMusic.py — Patch Notes
+z# getMusic.py — Patch Notes
+
+## v3.1.0 (2026-04-09)
+
+---
+
+### Enhancements
+
+**Absolute Paths for Genre Wings.** The `--all-wings` mode now accepts a `--paths` flag. When enabled, the absolute directory path is appended to the album header in the generated text files (e.g., `ALBUM: Jane Doe [/path/to/Music/Converge/Jane Doe]`). 
+- This bridges the gap between visualization and execution. It eliminates the need to write brittle shell scripts that guess file locations by scraping artist and album strings. You can now pipe the generated wing files directly into command-line tagging utilities.
+- The interactive TUI's Library submenu has been updated to prompt for path inclusion (`Include paths? (y/N)`) when generating genre wings.
 
 ## v3.0.1 (2026-04-08)
 
