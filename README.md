@@ -138,6 +138,19 @@ python getMusic.py --all-wings --root ~/Music --output wings/
 
 Produces files like `Alternative_Rock_Library.txt`, `East_Coast_Rap_Library.txt`, `Neoclassical_Library.txt`, etc. Albums with no genre tag land in `Uncategorized_Library.txt`. Pass `--genres` to include the genre label in each album header.
 
+## Companion Script: `retag.py`
+
+Included in the repository is `retag.py`, a universal genre tagger designed to work directly with the `--all-wings --paths` output. 
+
+Audio metadata formats handle multiple genres entirely differently (ID3 uses null bytes or slashes, Vorbis uses multiple `GENRE=` pairs, Apple uses specific custom atoms). `retag.py` abstracts this container chaos away, allowing you to safely hard-overwrite genres on an entire album directory simultaneously.
+
+**The Workflow:**
+1. Generate your wings with paths: `python getMusic.py --all-wings --root ~/Music --output wings/ --paths`
+2. Open a generated wing (e.g., `Uncategorized_Library.txt`) and copy the bracketed `[/path/to/album]` from an album header.
+3. Pass that path and your desired new genre(s) to `retag.py`:
+   ```bash
+   ./retag.py "/mnt/SharedData/Music/Kanye West/Yeezus" "Alternative Rap" "Industrial"
+
 ## Library statistics
 
 The `--stats` mode produces a full library report: file counts, total size and duration, format breakdown with per-format sizes, bitrate summary (with low-quality flagging), rating distribution with bar charts, top genres, and top artists by track count. Prints to screen by default, or `--output` to save.

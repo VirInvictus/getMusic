@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+import mutagen
+from mutagen.easyid3 import EasyID3
+from mutagen.mp4 import MP4
+
+AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.wma', '.aac'}
+
+def apply_genres(filepath: str, new_genres: list) -> bool:
+    ext = os.path.splitext(filepath)[1].lower()
+    try:
+        if ext == '.mp3':
+            try:
+                audio = EasyID3(filepath)
+            except mutagen.id3.ID3NoHeaderError:
+                audio = mutagen.File(filepath, easy=True)
+                audio.add_tags()
+            audio["genre"] = new_genres
+            audio.save()
+
+        elif ext in ['.flac', '.opus', '.ogg']:
+            audio = mutagen.File(filepath)
+            if audio is None:
+                return False
+            audio["genre"] = new_genres
+            audio.save()
+
+        elif ext in ['.m4a', '.mp4', '.aac']:
+            audio = MP4(filepath)
+            audio["\xa9gen"] = new_genres
+            audio.save()
+            
+        else:
+            return False
+
+        return True
+    except Exception as e:
+        print(f"  [!] Failed to tag {os.path.basename(filepath)}: {e}")
+        return False
+
+def main():
+    parser = argparse.ArgumentParser(description="Apply universal genre tags to a directory of audio files.")
+    parser.add_argument("directory", help="Absolute path to the album directory")
+    parser.add_argument("genres", nargs='+', help="One or more genres to apply")
+    args = parser.parse_args()
+
+    target_dir = args.directory
+    genres = args.genres
+
+    if not os.path.isdir(target_dir):
+        print(f"[!] Directory not found: {target_dir}")
+        sys.exit(1)
+
+    print(f"Tagging: {target_dir}")
+    print(f"Genres:  {genres}")
+
+    success_count = 0
+    files = sorted(os.listdir(target_dir))
+    
+    for f in files:
+        ext = os.path.splitext(f)[1].lower()
+        if ext in AUDIO_EXTENSIONS:
+            filepath = os.path.join(target_dir, f)
+            if apply_genres(filepath, genres):
+                success_count += 1
+
+    if success_count == 0:
+        print("  -> No valid audio files updated.")
+    else:
+        print(f"  -> Successfully updated {success_count} files.")
+
+if __name__ == "__main__":
+    main()
