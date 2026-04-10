@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="getMusic.py" width="420">
+  <img src="logo.svg" alt="Lattice.py" width="420">
 </p>
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>
@@ -77,42 +77,42 @@ On Debian/Ubuntu: `sudo apt install flac ffmpeg`
 
 ```bash
 # Build a library tree with genre tags
-python getMusic.py --library --root ~/Music --output library.txt --genres
+python Lattice.py --library --root ~/Music --output library.txt --genres
 
 # Export library for AI/LLM recommendation prompts
-python getMusic.py --ai-library --root ~/Music --output library_ai.txt
+python Lattice.py --ai-library --root ~/Music --output library_ai.txt
 
 # Generate per-genre library files (one .txt per genre)
-python getMusic.py --all-wings --root ~/Music --output wings/
-python getMusic.py --all-wings --root ~/Music --output wings/ --genres
+python Lattice.py --all-wings --root ~/Music --output wings/
+python Lattice.py --all-wings --root ~/Music --output wings/ --genres
 
 # Library statistics (prints to screen, or --output for file)
-python getMusic.py --stats --root ~/Music
-python getMusic.py --stats --root ~/Music --output library_stats.txt
+python Lattice.py --stats --root ~/Music
+python Lattice.py --stats --root ~/Music --output library_stats.txt
 
 # Verify FLAC integrity (4 parallel workers)
-python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
+python Lattice.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
 
 # Verify MP3s for decode errors
-python getMusic.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
+python Lattice.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
 
 # Verify Opus files for decode errors
-python getMusic.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
+python Lattice.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
 
 # Extract cover art (FLAC > Opus > M4A > MP3 priority)
-python getMusic.py --extractArt --root ~/Music
+python Lattice.py --extractArt --root ~/Music
 
 # Preview art extraction without writing files
-python getMusic.py --extractArt --root ~/Music --dry-run
+python Lattice.py --extractArt --root ~/Music --dry-run
 
 # Report directories missing cover art
-python getMusic.py --missingArt --root ~/Music --output missing_art.txt
+python Lattice.py --missingArt --root ~/Music --output missing_art.txt
 
 # Find duplicate albums across formats
-python getMusic.py --duplicates --root ~/Music --output duplicates.txt
+python Lattice.py --duplicates --root ~/Music --output duplicates.txt
 
 # Audit tags for missing metadata
-python getMusic.py --auditTags --root ~/Music --output tag_audit.txt
+python Lattice.py --auditTags --root ~/Music --output tag_audit.txt
 ```
 
 ## AI library export
@@ -133,7 +133,7 @@ Converge | Jane Doe | Metalcore | 4.8 | 12
 The `--all-wings` mode scans genre tags across your entire library, groups albums by genre, and writes a separate library tree file for each genre into the output directory — one file per genre, analogous to virtual library wings in Calibre. Useful for breaking a large library into manageable, genre-scoped catalogs.
 
 ```bash
-python getMusic.py --all-wings --root ~/Music --output wings/
+python Lattice.py --all-wings --root ~/Music --output wings/
 ```
 
 Produces files like `Alternative_Rock_Library.txt`, `East_Coast_Rap_Library.txt`, `Neoclassical_Library.txt`, etc. Albums with no genre tag land in `Uncategorized_Library.txt`. Pass `--genres` to include the genre label in each album header.
@@ -145,7 +145,7 @@ Included in the repository is `retag.py`, a universal genre tagger designed to w
 Audio metadata formats handle multiple genres entirely differently (ID3 uses null bytes or slashes, Vorbis uses multiple `GENRE=` pairs, Apple uses specific custom atoms). `retag.py` abstracts this container chaos away, allowing you to safely hard-overwrite genres on an entire album directory simultaneously.
 
 **The Workflow:**
-1. Generate your wings with paths: `python getMusic.py --all-wings --root ~/Music --output wings/ --paths`
+1. Generate your wings with paths: `python Lattice.py --all-wings --root ~/Music --output wings/ --paths`
 2. Open a generated wing (e.g., `Uncategorized_Library.txt`) and copy the bracketed `[/path/to/album]` from an album header.
 3. Pass that path and your desired new genre(s) to `retag.py`:
    ```bash
@@ -171,7 +171,7 @@ The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `e
 ## Full help output
 
 ```
-usage: getMusic.py [-h] [--version]
+usage: Lattice.py [-h] [--version]
                    [--library | --ai-library | --all-wings | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags | --stats]
                    [--root ROOT] [--output OUTPUT] [--workers WORKERS]
                    [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]
