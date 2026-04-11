@@ -159,7 +159,8 @@ Included in the repository is `retag.py`, a universal genre tagger designed to w
 Audio metadata formats handle multiple genres entirely differently (ID3 uses null bytes or slashes, Vorbis uses multiple `GENRE=` pairs, Apple uses specific custom atoms). `retag.py` abstracts this container chaos away, allowing you to safely hard-overwrite genres on an entire album directory simultaneously.
 
 **The Workflow:**
-1. Generate your wings with paths: `python Lattice.py --all-wings --root ~/Music --output wings/ --paths`
+1. Generate your wings with paths: `lattice --all-wings --root ~/Music --output wings/ --paths`
+   *(If you are using the compiled binary, replace `lattice` with `./dist/lattice`)*
 2. Open a generated wing (e.g., `Uncategorized_Library.txt`) and copy the bracketed `[/path/to/album]` from an album header.
 3. Pass that path and your desired new genre(s) to `retag.py`:
    ```bash
