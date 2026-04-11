@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# filepath: getMusic.py
+# filepath: Lattice.py
 """
 Unified music library toolkit.
 
@@ -17,19 +17,19 @@ Modes:
   --all-wings     Generate separate library files for each genre
 
 Usage examples:
-  python getMusic.py --library --root ~/Music --output library.txt --genres
-  python getMusic.py --ai-library --root ~/Music --output library_ai.txt
-  python getMusic.py --all-wings --root ~/Music --output wings/
-  python getMusic.py --all-wings --root ~/Music --output wings/ --genres --paths
-  python getMusic.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
-  python getMusic.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
-  python getMusic.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
-  python getMusic.py --extractArt --root ~/Music
-  python getMusic.py --missingArt --root ~/Music --output missing_art.txt
-  python getMusic.py --duplicates --root ~/Music --output duplicates.txt
-  python getMusic.py --auditTags --root ~/Music --output tag_audit.txt
-  python getMusic.py --stats --root ~/Music
-  python getMusic.py --stats --root ~/Music --output library_stats.txt
+  python Lattice.py --library --root ~/Music --output library.txt --genres
+  python Lattice.py --ai-library --root ~/Music --output library_ai.txt
+  python Lattice.py --all-wings --root ~/Music --output wings/
+  python Lattice.py --all-wings --root ~/Music --output wings/ --genres --paths
+  python Lattice.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
+  python Lattice.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
+  python Lattice.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
+  python Lattice.py --extractArt --root ~/Music
+  python Lattice.py --missingArt --root ~/Music --output missing_art.txt
+  python Lattice.py --duplicates --root ~/Music --output duplicates.txt
+  python Lattice.py --auditTags --root ~/Music --output tag_audit.txt
+  python Lattice.py --stats --root ~/Music
+  python Lattice.py --stats --root ~/Music --output library_stats.txt
 
 Notes:
   - Supports: .mp3, .flac, .ogg, .opus, .m4a, .wav, .wma, .aac
@@ -1818,7 +1818,7 @@ def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="getMusic.py",
+        prog="Lattice.py",
         description="Music library toolkit: tree, integrity, art, duplicates, tag audit"
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
@@ -2280,8 +2280,8 @@ _USE_CURSES = HAVE_CURSES and sys.stdin.isatty()
 def _select_main() -> Optional[tuple]:
     """Get a main-menu selection via curses or fallback."""
     if _USE_CURSES:
-        return _tui_select(f"getMusic v{VERSION}", _MAIN_SECTIONS)
-    _box_menu(f"getMusic v{VERSION}", [
+        return _tui_select(f"Lattice v{VERSION}", _MAIN_SECTIONS)
+    _box_menu(f"Lattice v{VERSION}", [
         ("LIBRARY", ["1) Library tree & exports          \u2192",
                       "2) Library statistics"]),
         ("INTEGRITY", ["3) Test FLAC files", "4) Test MP3 files",
