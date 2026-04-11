@@ -1,4 +1,4 @@
-# getMusic — Application Specification
+# Lattice — Application Specification
 
 **Version:** 3.0  
 **Language:** Python 3.9+  
@@ -9,7 +9,7 @@
 
 ## 1. Mission Statement
 
-getMusic is a CLI toolkit for music collectors who manage their own libraries
+Lattice is a CLI toolkit for music collectors who manage their own libraries
 outside of any player's database. It reads tags directly via mutagen —
 player-agnostic by design. Every operation works from the filesystem and
 embedded metadata, not from a proprietary database or cloud service.
@@ -24,7 +24,7 @@ layout (`~/Music/ARTIST/ALBUM/01 - Track.flac`) is the only assumption.
 
 ### 2.1 Single-File Design
 
-The entire toolkit lives in `getMusic.py`. No package structure, no imports
+The entire toolkit lives in `Lattice.py`. No package structure, no imports
 from local modules. This is intentional — the script is meant to be dropped
 into any directory and run. External dependencies are limited to `mutagen`
 (required for tag reading) and `tqdm` (optional, for progress bars).
@@ -83,7 +83,7 @@ reading, not spreadsheet import.
 
 ---
 
-## 5. What getMusic Is Not
+## 5. What Lattice Is Not
 
 - **Not a player.** It reads tags — it does not play audio.
 - **Not a tagger.** It reads metadata — it does not write it.
