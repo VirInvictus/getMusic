@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="Lattice.py" width="420">
+  <img src="logo.svg" alt="Lattice" width="420">
 </p>
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>

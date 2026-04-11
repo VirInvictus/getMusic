@@ -25,7 +25,7 @@ from lattice.utils import _reset_terminal
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="Lattice.py",
+        prog="lattice",
         description="Music library toolkit: tree, integrity, art, duplicates, tag audit"
     )
     p.add_argument("--version", action="version", version=f"%(prog)s {VERSION}")
@@ -45,6 +45,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--stats", action="store_true", help="Library-wide statistics summary")
 
     p.add_argument("--root", default=".", help="Root directory (default: current)")
+    p.add_argument("pos_root", nargs="?", default=None, help="Root directory (positional fallback)")
     p.add_argument("--output", default=None, help="Output path")
     p.add_argument("--workers", type=int, default=4, help="Parallel workers (integrity modes)")
     p.add_argument("--prefer", choices=["flac", "ffmpeg"], default="flac", help="Preferred tool (FLAC mode)")
@@ -79,7 +80,10 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     try:
         args = build_parser().parse_args(argv)
-        root = os.path.abspath(os.path.expanduser(args.root))
+        
+        # Positional root overrides --root flag
+        raw_root = args.pos_root if args.pos_root is not None else args.root
+        root = os.path.abspath(os.path.expanduser(raw_root))
 
         if args.library:
             output = args.output or DEFAULT_LIBRARY_OUTPUT

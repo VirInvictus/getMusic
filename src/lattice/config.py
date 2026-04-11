@@ -1,6 +1,6 @@
 import re
 
-VERSION = "4.0.0"
+VERSION = "4.0.1"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"

@@ -1,0 +1,31 @@
+ARTIST: .git
+  ├── ALBUM: hooks
+      └── [No Audio Files Found]
+  ├── ALBUM: info
+      └── [No Audio Files Found]
+  ├── ALBUM: logs
+      └── [No Audio Files Found]
+  ├── ALBUM: objects
+      └── [No Audio Files Found]
+  └── ALBUM: refs
+      └── [No Audio Files Found]
+ARTIST: .venv
+  ├── ALBUM: bin
+      └── [No Audio Files Found]
+  ├── ALBUM: include
+      └── [No Audio Files Found]
+  ├── ALBUM: lib
+      └── [No Audio Files Found]
+  ├── ALBUM: lib64
+      └── [No Audio Files Found]
+  └── ALBUM: share
+      └── [No Audio Files Found]
+ARTIST: build
+  └── [No Albums Found]
+
+ARTIST: dist
+  └── [No Albums Found]
+
+ARTIST: src
+  └── ALBUM: lattice
+      └── [No Audio Files Found]

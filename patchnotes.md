@@ -1,4 +1,14 @@
-z# Lattice.py — Patch Notes
+# Lattice — Patch Notes
+
+## v4.0.1 (2026-04-11)
+
+---
+
+### Bug Fixes & Improvements
+- **PyInstaller Multiprocessing Fix:** Fixed an issue where the standalone binary would crash (`unrecognized arguments: -B -S -I -c`) on Python 3.14 due to the `multiprocessing.resource_tracker` trying to spawn a new process using the executable as the Python interpreter. The executable now properly intercepts `-c` command strings from the tracker.
+- **Positional Root Argument:** The CLI now supports providing the root directory as an optional positional argument. You can run commands like `lattice --library .` instead of explicitly using `--root .`.
+
+---
 
 ## v4.0.0 (2026-04-11)
 
@@ -123,7 +133,7 @@ genre, and writes a separate library tree file for each genre into an output
 directory — analogous to virtual library wings in Calibre's getBooks.
 
 ```bash
-python Lattice.py --all-wings --root ~/Music --output wings/
+lattice --all-wings --root ~/Music --output wings/
 ```
 
 Produces files like `Alternative_Rock_Library.txt`, `East_Coast_Rap_Library.txt`,
@@ -374,3 +384,4 @@ functionality lives in the main script as `--extractArt`, with improvements.
 
 - `extract_opus_art.py` (folded into `--extractArt`).
 - `extract_mp3_art.py` (folded into `--extractArt`).
+rt`).
