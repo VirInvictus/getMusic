@@ -1,5 +1,21 @@
 z# Lattice.py — Patch Notes
 
+## v4.0.0 (2026-04-11)
+
+---
+
+### Major Overhaul: Package Restructure & Standalone Binary
+
+Lattice has been completely refactored from a single ~2500-line monolithic script (`Lattice.py`) into a proper, modern Python package architecture.
+
+**Layer-Based Package Design.** The codebase is now housed in `src/lattice/` and split by logical functionality (`cli.py`, `tui.py`, `tags.py`, `utils.py`, `config.py`, and a `modes/` directory for individual feature operations). This dramatically improves maintainability while preserving the exact same functionality and CLI interface.
+
+**Modern Build System (Hatch).** Lattice now uses `pyproject.toml` managed by Hatch, replacing the need for manual `pip install mutagen tqdm` commands. You can now cleanly install Lattice via `pipx install .` and have the `lattice` command available globally in your terminal.
+
+**Standalone Native Executable.** We have integrated **Nuitka** support to compile Lattice into a self-contained standalone binary. This means end-users no longer need to install Python or external packages (like `mutagen`) on their machines. The compiled binary (`lattice`) can be dropped into any directory in your PATH.
+
+---
+
 ## v3.1.0 (2026-04-09)
 
 ---

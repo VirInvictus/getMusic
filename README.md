@@ -54,15 +54,29 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 
 Running with no arguments launches an interactive TUI — a full-screen curses interface with arrow-key navigation, color-coded section groups (Library, Integrity, Artwork, Metadata), and a highlighted selection cursor. Menus, parameter prompts, and pause screens all render inside styled Unicode boxes for a consistent experience. Library tree, AI export, and genre wings live in a dedicated submenu. Falls back to typed input if curses is unavailable.
 
-## Requirements
+## Installation & Requirements
 
-**Python packages:**
+Lattice can be installed as a Python package or compiled into a standalone binary.
 
+**Option 1: Install via pipx (Recommended)**
+```bash
+pipx install .
+# Now you can run `lattice` globally
 ```
-pip install mutagen tqdm
+
+**Option 2: Install via pip (Virtual Environment)**
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install .
 ```
 
-`tqdm` is optional — the script falls back to a built-in progress bar if it's not installed.
+**Option 3: Compile a standalone binary (Nuitka)**
+```bash
+pip install .[nuitka] nuitka patchelf
+python -m nuitka --standalone --onefile src/lattice/__main__.py --output-filename=lattice --output-dir=build
+# Move the compiled `lattice` binary anywhere in your PATH.
+```
 
 **System tools (integrity modes):**
 
@@ -77,42 +91,42 @@ On Debian/Ubuntu: `sudo apt install flac ffmpeg`
 
 ```bash
 # Build a library tree with genre tags
-python Lattice.py --library --root ~/Music --output library.txt --genres
+lattice --library --root ~/Music --output library.txt --genres
 
 # Export library for AI/LLM recommendation prompts
-python Lattice.py --ai-library --root ~/Music --output library_ai.txt
+lattice --ai-library --root ~/Music --output library_ai.txt
 
 # Generate per-genre library files (one .txt per genre)
-python Lattice.py --all-wings --root ~/Music --output wings/
-python Lattice.py --all-wings --root ~/Music --output wings/ --genres
+lattice --all-wings --root ~/Music --output wings/
+lattice --all-wings --root ~/Music --output wings/ --genres
 
 # Library statistics (prints to screen, or --output for file)
-python Lattice.py --stats --root ~/Music
-python Lattice.py --stats --root ~/Music --output library_stats.txt
+lattice --stats --root ~/Music
+lattice --stats --root ~/Music --output library_stats.txt
 
 # Verify FLAC integrity (4 parallel workers)
-python Lattice.py --testFLAC --root ~/Music --output flac_errors.txt --workers 4
+lattice --testFLAC --root ~/Music --output flac_errors.txt --workers 4
 
 # Verify MP3s for decode errors
-python Lattice.py --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
+lattice --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
 
 # Verify Opus files for decode errors
-python Lattice.py --testOpus --root ~/Music --output opus_errors.txt --workers 4
+lattice --testOpus --root ~/Music --output opus_errors.txt --workers 4
 
 # Extract cover art (FLAC > Opus > M4A > MP3 priority)
-python Lattice.py --extractArt --root ~/Music
+lattice --extractArt --root ~/Music
 
 # Preview art extraction without writing files
-python Lattice.py --extractArt --root ~/Music --dry-run
+lattice --extractArt --root ~/Music --dry-run
 
 # Report directories missing cover art
-python Lattice.py --missingArt --root ~/Music --output missing_art.txt
+lattice --missingArt --root ~/Music --output missing_art.txt
 
 # Find duplicate albums across formats
-python Lattice.py --duplicates --root ~/Music --output duplicates.txt
+lattice --duplicates --root ~/Music --output duplicates.txt
 
 # Audit tags for missing metadata
-python Lattice.py --auditTags --root ~/Music --output tag_audit.txt
+lattice --auditTags --root ~/Music --output tag_audit.txt
 ```
 
 ## AI library export
@@ -171,7 +185,7 @@ The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `e
 ## Full help output
 
 ```
-usage: Lattice.py [-h] [--version]
+usage: lattice [-h] [--version]
                    [--library | --ai-library | --all-wings | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags | --stats]
                    [--root ROOT] [--output OUTPUT] [--workers WORKERS]
                    [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]

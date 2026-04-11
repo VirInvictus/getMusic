@@ -1,8 +1,8 @@
 # Lattice — Application Specification
 
-**Version:** 3.0  
-**Language:** Python 3.14+  
-**Dependencies:** mutagen (required), tqdm (optional)  
+**Version:** 4.0.0  
+**Language:** Python 3.9+  
+**Dependencies:** mutagen, tqdm  
 **License:** MIT
 
 ---
@@ -14,20 +14,21 @@ outside of any player's database. It reads tags directly via mutagen —
 player-agnostic by design. Every operation works from the filesystem and
 embedded metadata, not from a proprietary database or cloud service.
 
-Design philosophy: **one script, every library maintenance task.** No
-frameworks, no plugins, no configuration files. The standard collector
+Design philosophy: **one toolkit, every library maintenance task.** The standard collector
 layout (`~/Music/ARTIST/ALBUM/01 - Track.flac`) is the only assumption.
 
 ---
 
 ## 2. Architecture
 
-### 2.1 Single-File Design
+### 2.1 Layer-Based Package Design
 
-The entire toolkit lives in `Lattice.py`. No package structure, no imports
-from local modules. This is intentional — the script is meant to be dropped
-into any directory and run. External dependencies are limited to `mutagen`
-(required for tag reading) and `tqdm` (optional, for progress bars).
+The codebase is structured as a proper Python package (`src/lattice/`) managed by `pyproject.toml` (via Hatch). It is split by logical layers:
+- `cli.py`: Command routing and argparse definitions.
+- `tui.py`: Full-screen interactive curses interface.
+- `tags.py`: Extraction logic (`TagBundle`) over mutagen.
+- `utils.py`: Shared utilities (progress bars, terminal formatting).
+- `modes/`: The individual operation features (e.g., `library.py`, `integrity.py`, `artwork.py`).
 
 ### 2.2 Tag Reading
 
@@ -41,15 +42,20 @@ fields — compatible with foobar2000's `foo_quicktag` and most other taggers.
 
 `.mp3` · `.flac` · `.ogg` · `.opus` · `.m4a` · `.wav` · `.wma` · `.aac`
 
-### 2.4 Interactive TUI
+### 2.4 Standalone Binary
 
-When run with no arguments, the script launches a full-screen curses TUI with:
+Lattice can be compiled into a standalone native executable using **Nuitka**.
+This encapsulates the Python interpreter, dependencies (`mutagen`, `tqdm`), and the package code into a single high-performance binary, eliminating the need for end-users to install Python or configure `pip`.
+
+### 2.5 Interactive TUI
+
+When run with no arguments, the tool launches a full-screen curses TUI with:
 - Arrow-key navigation with highlighted selection cursor
 - Color-coded section groups (Library, Integrity, Artwork, Metadata)
 - Styled Unicode box drawing for menus, prompts, and pause screens
 - Fallback to typed numbered input if curses is unavailable
 
-### 2.5 CLI Interface
+### 2.6 CLI Interface
 
 Every mode is accessible via flags (`--library`, `--testFLAC`, etc.) for
 scripting and automation. All modes accept `--root`, `--output`, `--workers`,
