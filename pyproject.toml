@@ -25,8 +25,8 @@ packages = ["src/lattice"]
 
 [tool.hatch.envs.default]
 dependencies = [
-    "nuitka>=2.0"
+    "pyinstaller>=6.0"
 ]
 
 [tool.hatch.envs.default.scripts]
-build-bin = "python -m nuitka --standalone --onefile src/lattice/__main__.py --output-filename=lattice --output-dir=build"
+build-bin = "pyinstaller --onefile --name lattice --paths src src/lattice/__main__.py"

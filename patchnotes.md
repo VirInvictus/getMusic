@@ -12,7 +12,7 @@ Lattice has been completely refactored from a single ~2500-line monolithic scrip
 
 **Modern Build System (Hatch).** Lattice now uses `pyproject.toml` managed by Hatch, replacing the need for manual `pip install mutagen tqdm` commands. You can now cleanly install Lattice via `pipx install .` and have the `lattice` command available globally in your terminal.
 
-**Standalone Native Executable.** We have integrated **Nuitka** support to compile Lattice into a self-contained standalone binary. This means end-users no longer need to install Python or external packages (like `mutagen`) on their machines. The compiled binary (`lattice`) can be dropped into any directory in your PATH.
+**Standalone Native Executable.** We have integrated **PyInstaller** support to compile Lattice into a self-contained standalone binary. This means end-users no longer need to install Python or external packages (like `mutagen`) on their machines. The compiled binary (`lattice`) can be dropped into any directory in your PATH.
 
 ---
 

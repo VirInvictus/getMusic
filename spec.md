@@ -44,7 +44,7 @@ fields — compatible with foobar2000's `foo_quicktag` and most other taggers.
 
 ### 2.4 Standalone Binary
 
-Lattice can be compiled into a standalone native executable using **Nuitka**.
+Lattice can be compiled into a standalone native executable using **PyInstaller**.
 This encapsulates the Python interpreter, dependencies (`mutagen`, `tqdm`), and the package code into a single high-performance binary, eliminating the need for end-users to install Python or configure `pip`.
 
 ### 2.5 Interactive TUI

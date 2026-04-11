@@ -71,11 +71,11 @@ source .venv/bin/activate
 pip install .
 ```
 
-**Option 3: Compile a standalone binary (Nuitka)**
+**Option 3: Compile a standalone binary (PyInstaller)**
 ```bash
-pip install .[nuitka] nuitka patchelf
-python -m nuitka --standalone --onefile src/lattice/__main__.py --output-filename=lattice --output-dir=build
-# Move the compiled `lattice` binary anywhere in your PATH.
+pip install .[pyinstaller] pyinstaller
+pyinstaller --onefile --name lattice --paths src src/lattice/__main__.py
+# Move the compiled `lattice` binary from the `dist` folder to anywhere in your PATH.
 ```
 
 **System tools (integrity modes):**

@@ -32,7 +32,7 @@ What's done, what's next. Updated as of v4.0.0.
 - [x] Text output format (replaced CSV)
 - [x] Migrate monolithic Lattice.py to modern package architecture (`src/lattice`)
 - [x] Introduce Hatch and `pyproject.toml` for standard dependency management
-- [x] Add support for compiling a standalone native binary using Nuitka
+- [x] Add support for compiling a standalone native binary using PyInstaller
 
 ---
 
