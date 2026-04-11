@@ -1,4 +1,4 @@
-z# getMusic.py — Patch Notes
+z# Lattice.py — Patch Notes
 
 ## v3.1.0 (2026-04-09)
 
@@ -107,7 +107,7 @@ genre, and writes a separate library tree file for each genre into an output
 directory — analogous to virtual library wings in Calibre's getBooks.
 
 ```bash
-python getMusic.py --all-wings --root ~/Music --output wings/
+python Lattice.py --all-wings --root ~/Music --output wings/
 ```
 
 Produces files like `Alternative_Rock_Library.txt`, `East_Coast_Rap_Library.txt`,
@@ -324,7 +324,7 @@ straightforward `open()` calls.
 
 ---
 
-getMusic.py is now a single unified toolkit. The standalone
+Lattice.py is now a single unified toolkit. The standalone
 `extract_opus_art.py` and `extract_mp3_art.py` scripts are retired — their
 functionality lives in the main script as `--extractArt`, with improvements.
 
