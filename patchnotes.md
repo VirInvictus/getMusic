@@ -1,5 +1,14 @@
 # Lattice — Patch Notes
 
+## v4.1.3 (2026-04-12)
+
+---
+
+### Bug Fixes
+- Fixed an issue in the TUI main menu where selecting "Quit" (or pressing 'q') would unintentionally trigger the "Change library root" prompt due to a mismatched menu array index.
+
+---
+
 ## v4.1.2 (2026-04-12)
 
 ---

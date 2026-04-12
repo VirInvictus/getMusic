@@ -402,9 +402,10 @@ def _select_main() -> Optional[tuple]:
                         "5) Test Opus files"]),
         ("ARTWORK", ["6) Extract cover art", "7) Report missing art"]),
         ("METADATA", ["8) Find duplicate albums", "9) Audit tags"]),
+        ("SETTINGS", ["s) Change library root"]),
         ("", ["q) Quit"]),
     ])
-    return _fallback_input("  Select [1-9/q]: ", _MAIN_FALLBACK_MAP)
+    return _fallback_input("  Select [1-9/s/q]: ", _MAIN_FALLBACK_MAP)
 
 def _select_library() -> Optional[tuple]:
     if _USE_CURSES:
