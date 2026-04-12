@@ -41,7 +41,7 @@
 <circle cx="78" cy="56" r="5" fill="none" stroke="var(--t)" stroke-width="0.5"/>
 <circle cx="96" cy="56" r="5" fill="none" stroke="var(--t)" stroke-width="0.5"/>
 
-<text x="340" y="59" text-anchor="middle" class="mono" font-size="11" fill="var(--s)" font-weight="400">~/Music $ python .py</text>
+<text x="340" y="59" text-anchor="middle" class="mono" font-size="11" fill="var(--s)" font-weight="400">~/Music $ lattice</text>
 
 <g clip-path="url(#waveClip)">
 <g opacity="0.06">
