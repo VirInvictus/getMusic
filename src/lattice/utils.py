@@ -171,6 +171,7 @@ class _TUIPbar:
 
     def draw(self) -> None:
         import curses
+        self.stdscr.erase()
         h, w = self.stdscr.getmaxyx()
         box_w = 46  # Same width as TUI
         inner = box_w - 2

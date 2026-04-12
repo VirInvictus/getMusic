@@ -1,5 +1,15 @@
 # Lattice — Patch Notes
 
+## v4.1.1 (2026-04-12)
+
+---
+
+### Bug Fixes
+- Fixed a rendering bug where `_TUIPbar` did not erase the screen on its first draw, causing overlapping text from previous prompts in the curses interface.
+- Fixed a crash (`ValueError: embedded null character`) when scrolling through the library statistics TUI page by sanitizing null bytes from the output report.
+
+---
+
 ## v4.1.0 (2026-04-12)
 
 ---

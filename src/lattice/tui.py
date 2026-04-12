@@ -427,7 +427,7 @@ def _tui_page(title: str, content: str) -> None:
     def _run(stdscr):
         _init_tui_colors()
         curses.curs_set(0)
-        lines = content.split('\n')
+        lines = content.replace('\x00', '').split('\n')
         offset = 0
         while True:
             stdscr.erase()
