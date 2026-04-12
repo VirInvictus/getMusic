@@ -1,6 +1,9 @@
 import re
+import os
+import json
+from typing import Optional
 
-VERSION = "4.0.1"
+VERSION = "4.0.2"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
@@ -27,3 +30,27 @@ RE_CLEAN_PATTERNS = [
     re.compile(r'^[Tt]rack\s*(\d+)\.?\s*[-–—]?\s*(.+)$'),
     re.compile(r'^(\d+)\s+(.+)$')
 ]
+
+CONFIG_FILE = os.path.expanduser("~/.config/lattice/config.json")
+
+def load_config() -> dict:
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_config(config: dict) -> None:
+    os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4)
+
+def get_library_root() -> Optional[str]:
+    return load_config().get("library_root")
+
+def set_library_root(root: str) -> None:
+    config = load_config()
+    config["library_root"] = os.path.abspath(os.path.expanduser(root))
+    save_config(config)

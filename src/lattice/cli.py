@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--auditTags", action="store_true", help="Report files with incomplete tags")
     group.add_argument("--stats", action="store_true", help="Library-wide statistics summary")
 
-    p.add_argument("--root", default=".", help="Root directory (default: current)")
+    p.add_argument("--root", default=None, help="Root directory (default: read from config or current dir)")
     p.add_argument("pos_root", nargs="?", default=None, help="Root directory (positional fallback)")
     p.add_argument("--output", default=None, help="Output path")
     p.add_argument("--workers", type=int, default=4, help="Parallel workers (integrity modes)")
@@ -81,9 +81,27 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         args = build_parser().parse_args(argv)
         
-        # Positional root overrides --root flag
         raw_root = args.pos_root if args.pos_root is not None else args.root
-        root = os.path.abspath(os.path.expanduser(raw_root))
+
+        if raw_root is None:
+            from lattice.config import get_library_root, set_library_root
+            config_root = get_library_root()
+            if config_root and os.path.exists(config_root):
+                root = config_root
+            else:
+                if sys.stdin.isatty():
+                    print("First run: No library root configured.")
+                    raw_input_root = input("Enter path to your music library (or press Enter for current directory): ").strip()
+                    if raw_input_root:
+                        root = os.path.abspath(os.path.expanduser(raw_input_root))
+                        set_library_root(root)
+                        print(f"Library root saved to {root}")
+                    else:
+                        root = os.path.abspath(".")
+                else:
+                    root = os.path.abspath(".")
+        else:
+            root = os.path.abspath(os.path.expanduser(raw_root))
 
         if args.library:
             output = args.output or DEFAULT_LIBRARY_OUTPUT
@@ -133,7 +151,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             return run_tag_audit(root, output, quiet=args.quiet)
 
         if args.stats:
-            return run_stats(root, args.output, quiet=args.quiet)
+            run_stats(root, args.output, quiet=args.quiet)
+            return 0
 
         build_parser().print_help()
         return 2

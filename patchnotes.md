@@ -1,6 +1,21 @@
 # Lattice — Patch Notes
 
-## v4.0.1 (2026-04-11)
+## v4.1.0 (2026-04-12)
+
+---
+
+### New Features & Improvements
+- **First-Run Configuration:** Added a persistent configuration file stored at `~/.config/lattice/config.json`.
+  - The CLI and TUI now save the root music library location upon first run, eliminating the need to repeatedly specify `--root` or manually enter the path in the interactive menu.
+  - A new "Change library root" option has been added under the `SETTINGS` section in the TUI main menu.
+  - If no `--root` is provided, the CLI gracefully falls back to the configured location (or prompts if unconfigured).
+- **TUI Immersion Enhancements:**
+  - Progress bars now render seamlessly inside a stylized curses box when running from the TUI, preventing screen tearing and keeping the interface consistent.
+  - The library statistics page now displays its full report in an integrated, scrollable curses pager (`_tui_page`), rather than dropping you back into standard terminal output.
+
+---
+
+## v4.0.2 (2026-04-12)
 
 ---
 

@@ -22,17 +22,19 @@ def _format_size(size_bytes: int) -> str:
     else:
         return f"{size_bytes / (1024 ** 3):.2f} GB"
 
-def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> int:
+def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> str:
     """Generate a library-wide statistics report."""
     root = os.path.abspath(root)
 
     total_files = count_audio_files(root)
     if total_files == 0:
-        if not quiet:
+        import lattice.utils as utils
+        if not quiet and not utils.IN_TUI:
             print(f"No audio files found under: {root}")
-        return 0
+        return ""
 
-    if not quiet:
+    import lattice.utils as utils
+    if not quiet and not utils.IN_TUI:
         print(f"Scanning {total_files} files under: {root}")
 
     pbar = _make_pbar(total_files, "Gathering stats", quiet)
@@ -202,10 +204,13 @@ def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> int:
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
         with open(out_path, "w", encoding="utf-8") as out_file:
             out_file.write(report)
-        if not quiet:
+        import lattice.utils as utils
+        if not quiet and not utils.IN_TUI:
             print(f"\nStatistics written to: {out_path}")
     else:
-        print()
-        print(report)
+        import lattice.utils as utils
+        if not quiet and not utils.IN_TUI:
+            print()
+            print(report)
 
-    return 0
+    return report

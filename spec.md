@@ -1,6 +1,6 @@
 # Lattice — Application Specification
 
-**Version:** 4.0.2  
+**Version:** 4.1.0  
 **Language:** Python 3.9+  
 **Dependencies:** mutagen, tqdm  
 **License:** MIT
@@ -28,6 +28,7 @@ The codebase is structured as a proper Python package (`src/lattice/`) managed b
 - `tui.py`: Full-screen interactive curses interface.
 - `tags.py`: Extraction logic (`TagBundle`) over mutagen.
 - `utils.py`: Shared utilities (progress bars, terminal formatting).
+- `config.py`: Default constants and persistent library root configuration (`~/.config/lattice/config.json`).
 - `modes/`: The individual operation features (e.g., `library.py`, `integrity.py`, `artwork.py`).
 
 ### 2.2 Tag Reading

@@ -89,44 +89,46 @@ On Debian/Ubuntu: `sudo apt install flac ffmpeg`
 
 ## Usage
 
+Lattice now remembers your library location! On your first run, whether via the TUI or the CLI, Lattice will ask for the path to your music library and save it to `~/.config/lattice/config.json`. After that, you no longer need to provide the `--root` argument.
+
 ```bash
 # Build a library tree with genre tags
-lattice --library --root ~/Music --output library.txt --genres
+lattice --library --output library.txt --genres
 
 # Export library for AI/LLM recommendation prompts
-lattice --ai-library --root ~/Music --output library_ai.txt
+lattice --ai-library --output library_ai.txt
 
 # Generate per-genre library files (one .txt per genre)
-lattice --all-wings --root ~/Music --output wings/
-lattice --all-wings --root ~/Music --output wings/ --genres
+lattice --all-wings --output wings/
+lattice --all-wings --output wings/ --genres
 
 # Library statistics (prints to screen, or --output for file)
-lattice --stats --root ~/Music
-lattice --stats --root ~/Music --output library_stats.txt
+lattice --stats
+lattice --stats --output library_stats.txt
 
 # Verify FLAC integrity (4 parallel workers)
-lattice --testFLAC --root ~/Music --output flac_errors.txt --workers 4
+lattice --testFLAC --output flac_errors.txt --workers 4
 
 # Verify MP3s for decode errors
-lattice --testMP3 --root ~/Music --output mp3_errors.txt --workers 4
+lattice --testMP3 --output mp3_errors.txt --workers 4
 
 # Verify Opus files for decode errors
-lattice --testOpus --root ~/Music --output opus_errors.txt --workers 4
+lattice --testOpus --output opus_errors.txt --workers 4
 
 # Extract cover art (FLAC > Opus > M4A > MP3 priority)
-lattice --extractArt --root ~/Music
+lattice --extractArt
 
 # Preview art extraction without writing files
-lattice --extractArt --root ~/Music --dry-run
+lattice --extractArt --dry-run
 
 # Report directories missing cover art
-lattice --missingArt --root ~/Music --output missing_art.txt
+lattice --missingArt --output missing_art.txt
 
 # Find duplicate albums across formats
-lattice --duplicates --root ~/Music --output duplicates.txt
+lattice --duplicates --output duplicates.txt
 
 # Audit tags for missing metadata
-lattice --auditTags --root ~/Music --output tag_audit.txt
+lattice --auditTags --output tag_audit.txt
 ```
 
 ## AI library export

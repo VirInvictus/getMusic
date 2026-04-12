@@ -12,6 +12,8 @@ try:
 except ImportError:
     HAVE_TQDM = False
 
+IN_TUI = False
+
 def is_audio(filename: str) -> bool:
     """Check if a filename has a recognized audio extension."""
     return os.path.splitext(filename)[1].lower() in AUDIO_EXTENSIONS
@@ -138,6 +140,71 @@ def _has_cover_file(directory: str) -> bool:
     return bool(existing & COVER_NAMES)
 
 
+class _TUIPbar:
+    """A progress bar that renders in a curses box to match the TUI style."""
+    def __init__(self, total: int, desc: str):
+        self.total = total
+        self.desc = desc
+        self.current = 0
+        import curses
+        self.stdscr = curses.initscr()
+        curses.start_color()
+        curses.use_default_colors()
+        # Uses the same colors as tui.py
+        curses.init_pair(1, curses.COLOR_CYAN, -1)     # _CP_FRAME
+        curses.init_pair(2, curses.COLOR_WHITE, -1)    # _CP_TITLE
+        curses.init_pair(3, curses.COLOR_YELLOW, -1)   # _CP_HEADER
+        curses.init_pair(4, curses.COLOR_WHITE, -1)    # _CP_ITEM
+        curses.curs_set(0)
+        
+        # Suppress prints to stdout to prevent screen corruption
+        import sys, os
+        self._old_stdout = sys.stdout
+        self._devnull = open(os.devnull, 'w')
+        sys.stdout = self._devnull
+        
+        self.draw()
+
+    def update(self, n: int = 1) -> None:
+        self.current += n
+        self.draw()
+
+    def draw(self) -> None:
+        import curses
+        h, w = self.stdscr.getmaxyx()
+        box_w = 46  # Same width as TUI
+        inner = box_w - 2
+        bx = max(0, (w - box_w) // 2)
+        y = max(0, (h - 5) // 2)
+        
+        try:
+            self.stdscr.addstr(y, bx, "╔" + "═" * inner + "╗", curses.color_pair(1))
+            self.stdscr.addstr(y+1, bx, "║", curses.color_pair(1))
+            self.stdscr.addstr(y+1, bx+1, f" {self.desc}".ljust(inner), curses.color_pair(3) | curses.A_BOLD)
+            self.stdscr.addstr(y+1, bx+box_w-1, "║", curses.color_pair(1))
+            self.stdscr.addstr(y+2, bx, "╠" + "═" * inner + "╣", curses.color_pair(1))
+            
+            percent = self.current / max(1, self.total)
+            bar_len = inner - 10
+            filled = int(bar_len * percent)
+            bar = "█" * filled + "░" * (bar_len - filled)
+            pct_str = f"{int(percent*100):3d}%"
+            
+            self.stdscr.addstr(y+3, bx, "║", curses.color_pair(1))
+            self.stdscr.addstr(y+3, bx+1, f" {bar} {pct_str} ".ljust(inner), curses.color_pair(0))
+            self.stdscr.addstr(y+3, bx+box_w-1, "║", curses.color_pair(1))
+            self.stdscr.addstr(y+4, bx, "╚" + "═" * inner + "╝", curses.color_pair(1))
+            self.stdscr.refresh()
+        except curses.error:
+            pass
+
+    def close(self) -> None:
+        import sys
+        sys.stdout = self._old_stdout
+        self._devnull.close()
+        import curses
+        curses.endwin()
+
 class _FallbackProgress:
     """Simple progress bar for when tqdm is not installed."""
     __slots__ = ('_current', '_total', '_desc', '_quiet')
@@ -159,6 +226,8 @@ class _FallbackProgress:
 
 def _make_pbar(total: int, desc: str, quiet: bool):
     """Create a progress bar — tqdm if available, else a simple fallback."""
+    if IN_TUI:
+        return _TUIPbar(total, desc)
     if HAVE_TQDM and not quiet:
         return tqdm(total=total, unit="file", desc=desc, dynamic_ncols=True)
     return _FallbackProgress(total, desc, quiet)

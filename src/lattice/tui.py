@@ -344,6 +344,7 @@ _MAIN_FALLBACK_MAP: Dict[str, Optional[tuple]] = {
     "7": (2, 1), "missing": (2, 1),
     "8": (3, 0), "dup": (3, 0), "dupes": (3, 0),
     "9": (3, 1), "audit": (3, 1), "tags": (3, 1),
+    "s": (4, 0), "settings": (4, 0), "config": (4, 0), "c": (4, 0),
     "q": None, "quit": None, "exit": None,
 }
 
@@ -417,7 +418,71 @@ def _select_library() -> Optional[tuple]:
     ])
     return _fallback_input("  Select [1-3/b]: ", _LIB_FALLBACK_MAP)
 
-def _library_submenu() -> None:
+def _tui_page(title: str, content: str) -> None:
+    if not _USE_CURSES:
+        print(content)
+        _pause()
+        return
+
+    def _run(stdscr):
+        _init_tui_colors()
+        curses.curs_set(0)
+        lines = content.split('\n')
+        offset = 0
+        while True:
+            stdscr.erase()
+            h, w = stdscr.getmaxyx()
+            
+            box_w = min(80, w - 2)
+            inner = box_w - 2
+            bx = max(0, (w - box_w) // 2)
+            
+            max_lines = max(5, h - 6)
+            visible_lines = lines[offset:offset+max_lines]
+            
+            y = max(0, (h - (len(visible_lines) + 5)) // 2)
+            
+            _safe_addstr(stdscr, y, bx, "╔" + "═" * inner + "╗", curses.color_pair(_CP_FRAME))
+            y += 1
+            _safe_addstr(stdscr, y, bx, "║", curses.color_pair(_CP_FRAME))
+            _safe_addstr(stdscr, y, bx+1, f" {title}".ljust(inner), curses.color_pair(_CP_TITLE) | curses.A_BOLD)
+            _safe_addstr(stdscr, y, bx+box_w-1, "║", curses.color_pair(_CP_FRAME))
+            y += 1
+            _safe_addstr(stdscr, y, bx, "╠" + "═" * inner + "╣", curses.color_pair(_CP_FRAME))
+            y += 1
+            
+            for line in visible_lines:
+                _safe_addstr(stdscr, y, bx, "║", curses.color_pair(_CP_FRAME))
+                _safe_addstr(stdscr, y, bx+1, (" " + line)[:inner].ljust(inner), curses.color_pair(_CP_ITEM))
+                _safe_addstr(stdscr, y, bx+box_w-1, "║", curses.color_pair(_CP_FRAME))
+                y += 1
+                
+            _safe_addstr(stdscr, y, bx, "╚" + "═" * inner + "╝", curses.color_pair(_CP_FRAME))
+            y += 2
+            
+            hints = "↑↓ Scroll  q/Esc Close"
+            hx = max(0, (w - len(hints)) // 2)
+            _safe_addstr(stdscr, y, hx, hints, curses.color_pair(_CP_HINT) | curses.A_DIM)
+            
+            stdscr.refresh()
+            
+            key = stdscr.getch()
+            if key in (curses.KEY_UP, ord('k')) and offset > 0:
+                offset -= 1
+            elif key in (curses.KEY_DOWN, ord('j')) and offset < max(0, len(lines) - max_lines):
+                offset += 1
+            elif key in (ord('q'), ord('Q'), 27):
+                break
+            elif key == curses.KEY_RESIZE:
+                pass
+                
+    try:
+        curses.wrapper(_run)
+    except curses.error:
+        print(content)
+        _pause()
+
+def _library_submenu(root: str) -> None:
     while True:
         result = _select_library()
 
@@ -432,7 +497,6 @@ def _library_submenu() -> None:
         _reset_terminal()
 
         if result == (0, 0):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_LIBRARY_OUTPUT) or DEFAULT_LIBRARY_OUTPUT
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             write_music_library_tree(root, output, quiet=False, show_genre=show_g)
@@ -440,13 +504,11 @@ def _library_submenu() -> None:
             _pause()
 
         elif result == (0, 1):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
             write_ai_library(root, output, quiet=False)
             _pause()
 
         elif result == (0, 2):
-            root = _prompt_path("Root directory")
             outdir = _prompt_str("Output directory", "wings") or "wings"
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             show_p = _prompt_str("Include paths? (y/N)", "N").lower().startswith('y')
@@ -454,7 +516,17 @@ def _library_submenu() -> None:
             _pause()
 
 def interactive_menu() -> int:
+    import lattice.utils as utils
+    from lattice.config import get_library_root, set_library_root
+    utils.IN_TUI = True
+
     while True:
+        root = get_library_root()
+        if not root or not os.path.exists(root):
+            root = _prompt_path("First run: Enter path to your music library")
+            set_library_root(root)
+            continue
+            
         _reset_terminal()
         result = _select_main()
 
@@ -463,20 +535,26 @@ def interactive_menu() -> int:
                 print("  Invalid selection.")
             continue
 
-        if result is None or result == (4, 0):
+        if result is None or result == (5, 0):  # Quit (was 4, 0)
             return 0
 
+        if result == (4, 0):  # Change root
+            new_root = _prompt_path(f"Change library root (current: {root})")
+            set_library_root(new_root)
+            continue
+
         if result == (0, 0):
-            _library_submenu()
+            _library_submenu(root)
 
         elif result == (0, 1):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file (leave blank for screen)", "").strip() or None
-            run_stats(root, output, quiet=False)
-            _pause()
+            report = run_stats(root, output, quiet=False)
+            if not output and report:
+                _tui_page("Library Statistics", report)
+            else:
+                _pause()
 
         elif result == (1, 0):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_FLAC_OUTPUT) or DEFAULT_FLAC_OUTPUT
             workers = _prompt_int("Workers", 4)
             pref = _prompt_str("Preferred tool (flac/ffmpeg)", "flac").lower()
@@ -484,7 +562,6 @@ def interactive_menu() -> int:
             _pause()
 
         elif result == (1, 1):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_MP3_OUTPUT) or DEFAULT_MP3_OUTPUT
             workers = _prompt_int("Workers", 4)
             include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
@@ -495,7 +572,6 @@ def interactive_menu() -> int:
             _pause()
 
         elif result == (1, 2):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_OPUS_OUTPUT) or DEFAULT_OPUS_OUTPUT
             workers = _prompt_int("Workers", 4)
             include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
@@ -506,25 +582,21 @@ def interactive_menu() -> int:
             _pause()
 
         elif result == (2, 0):
-            root = _prompt_path("Root directory")
             dry = _prompt_str("Dry run? (y/N)", "N").lower().startswith('y')
             run_extract_art(root, quiet=False, dry_run=dry)
             _pause()
 
         elif result == (2, 1):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_MISSING_ART_OUTPUT) or DEFAULT_MISSING_ART_OUTPUT
             run_missing_art(root, output, quiet=False)
             _pause()
 
         elif result == (3, 0):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_DUPLICATES_OUTPUT) or DEFAULT_DUPLICATES_OUTPUT
             run_duplicates(root, output, quiet=False)
             _pause()
 
         elif result == (3, 1):
-            root = _prompt_path("Root directory")
             output = _prompt_str("Output file", DEFAULT_TAG_AUDIT_OUTPUT) or DEFAULT_TAG_AUDIT_OUTPUT
             run_tag_audit(root, output, quiet=False)
             _pause()

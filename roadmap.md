@@ -1,6 +1,6 @@
 # Lattice — Roadmap
 
-What's done, what's next. Updated as of v4.0.0.
+What's done, what's next. Updated as of v4.1.0.
 
 ---
 
@@ -33,6 +33,8 @@ What's done, what's next. Updated as of v4.0.0.
 - [x] Migrate monolithic Lattice.py to modern package architecture (`src/lattice`)
 - [x] Introduce Hatch and `pyproject.toml` for standard dependency management
 - [x] Add support for compiling a standalone native binary using PyInstaller
+- [x] Persistent first-run configuration (`~/.config/lattice/config.json`)
+- [x] Seamless TUI immersion (in-menu progress bars and integrated stat pager)
 
 ---
 
