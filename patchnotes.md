@@ -1,5 +1,17 @@
 # Lattice — Patch Notes
 
+## v4.1.2 (2026-04-12)
+
+---
+
+### Bug Fixes & Improvements
+- **Fully Immersive TUI:** Addressed an issue where background operations (such as cover art extraction or tree generation) would write their output directly to the terminal stdout and pause, which dropped the user out of the full-screen curses environment.
+  - The TUI now features a global output capture wrapper (`_run_with_capture`) using an `io.StringIO` buffer.
+  - Standard output and error output are automatically intercepted while a background task executes, allowing progress bars to draw undisturbed.
+  - Upon task completion, any logged output (e.g., dry-run details, success messages, errors) is formatted and displayed within the `_tui_page` viewer, ensuring the user never leaves the curses application.
+
+---
+
 ## v4.1.1 (2026-04-12)
 
 ---

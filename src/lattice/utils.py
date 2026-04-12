@@ -157,12 +157,6 @@ class _TUIPbar:
         curses.init_pair(4, curses.COLOR_WHITE, -1)    # _CP_ITEM
         curses.curs_set(0)
         
-        # Suppress prints to stdout to prevent screen corruption
-        import sys, os
-        self._old_stdout = sys.stdout
-        self._devnull = open(os.devnull, 'w')
-        sys.stdout = self._devnull
-        
         self.draw()
 
     def update(self, n: int = 1) -> None:
@@ -200,9 +194,6 @@ class _TUIPbar:
             pass
 
     def close(self) -> None:
-        import sys
-        sys.stdout = self._old_stdout
-        self._devnull.close()
         import curses
         curses.endwin()
 

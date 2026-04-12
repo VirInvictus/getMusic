@@ -482,6 +482,42 @@ def _tui_page(title: str, content: str) -> None:
         print(content)
         _pause()
 
+import io
+from contextlib import contextmanager
+
+@contextmanager
+def capture_output():
+    import sys
+    old_out, old_err = sys.stdout, sys.stderr
+    out, err = io.StringIO(), io.StringIO()
+    sys.stdout, sys.stderr = out, err
+    try:
+        yield out, err
+    finally:
+        sys.stdout, sys.stderr = old_out, old_err
+
+def _run_with_capture(title: str, func, *args, **kwargs):
+    with capture_output() as (out, err):
+        result = func(*args, **kwargs)
+    
+    text = ""
+    if isinstance(result, str) and result:
+        text += result + "\n"
+    
+    out_text = out.getvalue().strip()
+    if out_text:
+        text += out_text + "\n"
+        
+    err_text = err.getvalue().strip()
+    if err_text:
+        text += "\n[Errors/Warnings]:\n" + err_text + "\n"
+        
+    text = text.strip()
+    if text:
+        _tui_page(title, text)
+    else:
+        _pause()
+
 def _library_submenu(root: str) -> None:
     while True:
         result = _select_library()
@@ -499,21 +535,26 @@ def _library_submenu(root: str) -> None:
         if result == (0, 0):
             output = _prompt_str("Output file", DEFAULT_LIBRARY_OUTPUT) or DEFAULT_LIBRARY_OUTPUT
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
-            write_music_library_tree(root, output, quiet=False, show_genre=show_g)
-            print(f"\n  Library written to {output}")
-            _pause()
+            def _wrap():
+                write_music_library_tree(root, output, quiet=False, show_genre=show_g)
+                print(f"\n  Library written to {output}")
+            _run_with_capture("Build music library tree", _wrap)
 
         elif result == (0, 1):
             output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
-            write_ai_library(root, output, quiet=False)
-            _pause()
+            def _wrap2():
+                write_ai_library(root, output, quiet=False)
+                print(f"\n  Library written to {output}")
+            _run_with_capture("AI-readable library export", _wrap2)
 
         elif result == (0, 2):
             outdir = _prompt_str("Output directory", "wings") or "wings"
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             show_p = _prompt_str("Include paths? (y/N)", "N").lower().startswith('y')
-            write_all_wings(root, outdir, quiet=False, show_genre=show_g, show_paths=show_p)
-            _pause()
+            def _wrap3():
+                write_all_wings(root, outdir, quiet=False, show_genre=show_g, show_paths=show_p)
+                print(f"\n  Wings generated in {outdir}")
+            _run_with_capture("Generate all wings (per-genre)", _wrap3)
 
 def interactive_menu() -> int:
     import lattice.utils as utils
@@ -548,55 +589,40 @@ def interactive_menu() -> int:
 
         elif result == (0, 1):
             output = _prompt_str("Output file (leave blank for screen)", "").strip() or None
-            report = run_stats(root, output, quiet=False)
-            if not output and report:
-                _tui_page("Library Statistics", report)
-            else:
-                _pause()
+            _run_with_capture("Library Statistics", run_stats, root, output, quiet=False)
 
         elif result == (1, 0):
             output = _prompt_str("Output file", DEFAULT_FLAC_OUTPUT) or DEFAULT_FLAC_OUTPUT
             workers = _prompt_int("Workers", 4)
             pref = _prompt_str("Preferred tool (flac/ffmpeg)", "flac").lower()
-            run_flac_mode(root, output, workers, pref, quiet=False)
-            _pause()
+            _run_with_capture("Test FLAC files", run_flac_mode, root, output, workers, pref, quiet=False)
 
         elif result == (1, 1):
             output = _prompt_str("Output file", DEFAULT_MP3_OUTPUT) or DEFAULT_MP3_OUTPUT
             workers = _prompt_int("Workers", 4)
             include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
-            run_mp3_mode(
-                root, output, workers, None,
-                only_errors=not include_ok, verbose=include_ok, quiet=False,
-            )
-            _pause()
+            _run_with_capture("Test MP3 files", run_mp3_mode, root, output, workers, None,
+                only_errors=not include_ok, verbose=include_ok, quiet=False)
 
         elif result == (1, 2):
             output = _prompt_str("Output file", DEFAULT_OPUS_OUTPUT) or DEFAULT_OPUS_OUTPUT
             workers = _prompt_int("Workers", 4)
             include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
-            run_opus_mode(
-                root, output, workers, None,
-                only_errors=not include_ok, verbose=include_ok, quiet=False,
-            )
-            _pause()
+            _run_with_capture("Test Opus files", run_opus_mode, root, output, workers, None,
+                only_errors=not include_ok, verbose=include_ok, quiet=False)
 
         elif result == (2, 0):
             dry = _prompt_str("Dry run? (y/N)", "N").lower().startswith('y')
-            run_extract_art(root, quiet=False, dry_run=dry)
-            _pause()
+            _run_with_capture("Extract cover art", run_extract_art, root, quiet=False, dry_run=dry)
 
         elif result == (2, 1):
             output = _prompt_str("Output file", DEFAULT_MISSING_ART_OUTPUT) or DEFAULT_MISSING_ART_OUTPUT
-            run_missing_art(root, output, quiet=False)
-            _pause()
+            _run_with_capture("Report missing art", run_missing_art, root, output, quiet=False)
 
         elif result == (3, 0):
             output = _prompt_str("Output file", DEFAULT_DUPLICATES_OUTPUT) or DEFAULT_DUPLICATES_OUTPUT
-            run_duplicates(root, output, quiet=False)
-            _pause()
+            _run_with_capture("Find duplicate albums", run_duplicates, root, output, quiet=False)
 
         elif result == (3, 1):
             output = _prompt_str("Output file", DEFAULT_TAG_AUDIT_OUTPUT) or DEFAULT_TAG_AUDIT_OUTPUT
-            run_tag_audit(root, output, quiet=False)
-            _pause()
+            _run_with_capture("Audit tags", run_tag_audit, root, output, quiet=False)
