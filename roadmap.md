@@ -12,6 +12,7 @@ What's done, what's next, what's deferred. Sequenced for maximum utility as a st
 - [x] **Front Cover Preference** — Prefer ID3 APIC/FLAC type 3 over generic embedded images.
 - [x] **Modern Architecture** — Migrate from monolithic script to a modular `src/lattice` package via Hatch (`pyproject.toml`).
 - [ ] **Configurable Layout** — Support non-standard directory structures via pattern argument instead of strict `ARTIST/ALBUM/Track.ext`.
+- [ ] **Fix Close button trying to change music root location** - This should just exit.
 
 ## Phase 2: Integrity & Auditing (Validation Layer)
 - [x] **Parallel FLAC Verification** — Spawn parallel workers to run `flac -t` or `ffmpeg` to detect corruption.
