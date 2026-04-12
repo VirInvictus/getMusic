@@ -384,4 +384,18 @@ functionality lives in the main script as `--extractArt`, with improvements.
 
 - `extract_opus_art.py` (folded into `--extractArt`).
 - `extract_mp3_art.py` (folded into `--extractArt`).
+les no longer
+  produces both `cover.jpg` and `Cover.jpg`.
+
+### Improvements
+
+- Art extraction prefers front cover (type 3) over generic embedded images.
+- Art extraction supports four formats: FLAC, Opus/OGG, M4A, MP3.
+- Interactive menu updated with all eight modes.
+- All existing CLI invocations remain backward-compatible.
+
+### Removed
+
+- `extract_opus_art.py` (folded into `--extractArt`).
+- `extract_mp3_art.py` (folded into `--extractArt`).
 rt`).

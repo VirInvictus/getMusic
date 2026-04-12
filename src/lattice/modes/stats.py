@@ -200,8 +200,8 @@ def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> int:
     if output:
         out_path = os.path.abspath(output)
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-        with open(out_path, "w", encoding="utf-8") as f:
-            f.write(report)
+        with open(out_path, "w", encoding="utf-8") as out_file:
+            out_file.write(report)
         if not quiet:
             print(f"\nStatistics written to: {out_path}")
     else:

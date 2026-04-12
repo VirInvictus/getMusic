@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from lattice.utils import is_audio, _has_cover_file
 from lattice.config import ART_FORMAT_PRIORITY, DEFAULT_MISSING_ART_OUTPUT
-from lattice.tags import HAVE_MUTAGEN_BASE, FLAC, MutagenFile, Picture, MUTAGEN_MP3, MP4
+from lattice.tags import HAVE_MUTAGEN_BASE, HAVE_MUTAGEN_MP3, FLAC, MutagenFile, Picture, MUTAGEN_MP3, MP4
 
 # =====================================
 # Mode: Extract cover art

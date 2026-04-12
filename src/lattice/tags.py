@@ -187,17 +187,17 @@ def get_all_tags(file_path: str) -> TagBundle:
                         break
 
         elif isinstance(audio, ASF):
-            name_map = {k.lower(): k for k in tags.keys()}
-            if (k := name_map.get('title')):
-                title = _first_text(tags.get(k))
-            if (k := name_map.get('wm/albumartist') or name_map.get('author')):
-                artist = _first_text(tags.get(k))
-            if (k := name_map.get('wm/tracknumber') or name_map.get('tracknumber')):
-                trackno = _parse_track_number(tags.get(k))
-            if (k := name_map.get('wm/albumtitle')):
-                album = _first_text(tags.get(k))
-            if (k := name_map.get('wm/genre')):
-                genre = _first_text(tags.get(k))
+            name_map = {k_name.lower(): k_name for k_name in tags.keys()}
+            if (key_name := name_map.get('title')):
+                title = _first_text(tags.get(key_name))
+            if (key_name := name_map.get('wm/albumartist') or name_map.get('author')):
+                artist = _first_text(tags.get(key_name))
+            if (key_name := name_map.get('wm/tracknumber') or name_map.get('tracknumber')):
+                trackno = _parse_track_number(tags.get(key_name))
+            if (key_name := name_map.get('wm/albumtitle')):
+                album = _first_text(tags.get(key_name))
+            if (key_name := name_map.get('wm/genre')):
+                genre = _first_text(tags.get(key_name))
             for key, val in tags.items():
                 if 'rating' in key.lower():
                     val = val[0] if isinstance(val, list) else val
@@ -213,10 +213,12 @@ def get_all_tags(file_path: str) -> TagBundle:
                     album = _first_text(v)
                 if genre is None and kl in ('genre', 'wm/genre'):
                     genre = _first_text(v)
-            if album is None and hasattr(tags, 'getall'):
-                talb = tags.getall('TALB')
-                if talb:
-                    album = _first_text(talb[0])
+            if album is None:
+                getall_fn = getattr(tags, 'getall', None)
+                if getall_fn:
+                    talb = getall_fn('TALB')
+                    if talb:
+                        album = _first_text(talb[0])
 
     except Exception:
         pass

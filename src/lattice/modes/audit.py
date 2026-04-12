@@ -1,7 +1,7 @@
 import os
 import sys
 from collections import defaultdict, Counter
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from lattice.utils import is_audio, count_audio_files, _make_pbar
 from lattice.tags import get_all_tags, HAVE_MUTAGEN_BASE
@@ -57,19 +57,19 @@ def run_duplicates(root: str, output: str, *, quiet: bool = False) -> int:
 
     total_dupes = sum(len(v) for v in duplicates.values())
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("DUPLICATE ALBUM REPORT\n")
-        f.write(f"Root: {root}\n")
-        f.write(f"Duplicated albums: {len(duplicates)}  Total directories: {total_dupes}\n")
-        f.write("=" * 60 + "\n\n")
+    with open(out_path, "w", encoding="utf-8") as out_file:
+        out_file.write("DUPLICATE ALBUM REPORT\n")
+        out_file.write(f"Root: {root}\n")
+        out_file.write(f"Duplicated albums: {len(duplicates)}  Total directories: {total_dupes}\n")
+        out_file.write("=" * 60 + "\n\n")
 
         for i, ((artist, album), locations) in enumerate(sorted(duplicates.items()), 1):
-            f.write(f"  {i}. {artist} — {album}\n")
+            out_file.write(f"  {i}. {artist} — {album}\n")
             for directory, formats in locations:
                 rel = os.path.relpath(directory, root)
                 fmt_str = " ".join(sorted(formats))
-                f.write(f"     └── {rel}  [{fmt_str}]\n")
-            f.write("\n")
+                out_file.write(f"     └── {rel}  [{fmt_str}]\n")
+            out_file.write("\n")
 
     if not quiet:
         print(f"\nFound {len(duplicates)} duplicated album(s) across {total_dupes} directories.")
@@ -142,22 +142,22 @@ def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
         parent = os.path.dirname(issue["path"])
         by_dir[parent].append(issue)
 
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write("TAG AUDIT REPORT\n")
-        f.write(f"Root: {root}\n")
-        f.write(f"Scanned: {total}  Incomplete: {len(issues)}\n")
+    with open(out_path, "w", encoding="utf-8") as out_file:
+        out_file.write("TAG AUDIT REPORT\n")
+        out_file.write(f"Root: {root}\n")
+        out_file.write(f"Scanned: {total}  Incomplete: {len(issues)}\n")
         if field_counts:
             breakdown = "  ".join(f"{field}: {count}" for field, count in field_counts.most_common())
-            f.write(f"Breakdown: {breakdown}\n")
-        f.write("=" * 60 + "\n\n")
+            out_file.write(f"Breakdown: {breakdown}\n")
+        out_file.write("=" * 60 + "\n\n")
 
         for directory in sorted(by_dir.keys()):
             rel_dir = os.path.relpath(directory, root)
-            f.write(f"  {rel_dir}/\n")
+            out_file.write(f"  {rel_dir}/\n")
             for issue in by_dir[directory]:
                 filename = os.path.basename(issue["path"])
-                f.write(f"    {filename}  [{issue['format']}]  missing: {issue['missing']}\n")
-            f.write("\n")
+                out_file.write(f"    {filename}  [{issue['format']}]  missing: {issue['missing']}\n")
+            out_file.write("\n")
 
     if not quiet:
         print(f"\nAudited {total} files. Found {len(issues)} with incomplete tags.")
