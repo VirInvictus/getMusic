@@ -3,17 +3,22 @@ import os
 import json
 from typing import Optional
 
-VERSION = "4.1.3"
+VERSION = "4.2.0"
 
 DEFAULT_LIBRARY_OUTPUT = "music_library.txt"
 DEFAULT_FLAC_OUTPUT = "flac_errors.txt"
 DEFAULT_MP3_OUTPUT = "mp3_scan_results.txt"
 DEFAULT_OPUS_OUTPUT = "opus_scan_results.txt"
+DEFAULT_WAV_OUTPUT = "wav_scan_results.txt"
+DEFAULT_WMA_OUTPUT = "wma_scan_results.txt"
 DEFAULT_MISSING_ART_OUTPUT = "missing_art.txt"
+DEFAULT_ART_QUALITY_OUTPUT = "art_quality_audit.txt"
 DEFAULT_DUPLICATES_OUTPUT = "duplicates.txt"
 DEFAULT_TAG_AUDIT_OUTPUT = "tag_audit.txt"
+DEFAULT_BITRATE_AUDIT_OUTPUT = "bitrate_audit.txt"
 DEFAULT_AI_LIBRARY_OUTPUT = "library_ai.txt"
 DEFAULT_STATS_OUTPUT = "library_stats.txt"
+DEFAULT_PLAYLIST_OUTPUT = "smart_playlist.m3u"
 
 AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.wma', '.aac'}
 

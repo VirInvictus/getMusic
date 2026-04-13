@@ -1,5 +1,26 @@
 # Lattice — Patch Notes
 
+## v4.2.0 (2026-04-13)
+
+---
+
+### Major Overhaul: Configurable Layout & Smart Playlists
+
+Lattice now supports dynamic directory structures via the `--layout` flag, completely decoupling library generation from the strict `ARTIST/ALBUM` assumption. You can now generate `.m3u` playlists using rule-based filters.
+
+### New Features & Improvements
+- **Configurable Layout:** A new `--layout` argument specifies your directory structure (e.g. `{genre}/{artist}/{album}`). `write_music_library_tree`, `write_ai_library`, and `write_all_wings` now intelligently parse paths according to this structure if tags are missing. They no longer fail or produce garbage output on flat folders.
+- **Smart Playlists:** Generate `.m3u` playlists based on dynamic evaluation rules using `--playlist` and `--rule` (e.g. `"rating >= 4 and genre == 'Jazz'"`).
+- **WAV & WMA Support:** Extended the unified FFmpeg decode scanner to verify WAV (`--testWAV`) and WMA (`--testWMA`) files.
+- **Art Quality Audit:** Added `--auditArtQuality` (with configurable `--min-art-res`) to parse and report extracted or embedded covers falling below a minimum resolution threshold (default: 500x500).
+- **Bitrate Floor Audit:** Added `--auditBitrate` (with configurable `--min-bitrate`) to report audio files falling below a designated kbps floor (default: 192).
+- **Rating Distribution per Genre:** The library statistics page (`--stats`) now cross-tabulates rating distributions (e.g., 5-star vs 1-star spread) independently per genre.
+
+### Bug Fixes
+- **TUI Close Button Fix:** Fixed an indexing error in the interactive menu where selecting "Quit" would accidentally trigger the "Change library root" prompt due to a missing settings group in the main `_MAIN_SECTIONS` list.
+
+---
+
 ## v4.1.3 (2026-04-12)
 
 ---

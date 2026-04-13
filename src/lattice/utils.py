@@ -139,6 +139,17 @@ def _has_cover_file(directory: str) -> bool:
         return False
     return bool(existing & COVER_NAMES)
 
+def parse_layout(rel_path: str, layout: str) -> dict:
+    """Extract metadata from a relative path based on a layout pattern like {artist}/{album}"""
+    parts = os.path.dirname(rel_path).split(os.sep)
+    layout_parts = [p for p in layout.replace('\\', '/').split('/') if p]
+    result = {}
+    for i, l_part in enumerate(layout_parts):
+        if i < len(parts):
+            key = l_part.strip("{}").lower()
+            result[key] = parts[i]
+    return result
+
 
 class _TUIPbar:
     """A progress bar that renders in a curses box to match the TUI style."""

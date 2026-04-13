@@ -1,6 +1,7 @@
 import os
 import sys
 import base64
+import struct
 from collections import defaultdict
 from typing import Dict, List, Optional
 
@@ -260,4 +261,125 @@ def run_missing_art(root: str, output: str, *, quiet: bool = False) -> int:
         print(f"\nResults written to: {out_path}")
         print(f"  No art at all: {len(no_art_at_all)}")
         print(f"  Embedded only (no folder art): {len(embedded_only)}")
+    return 0
+
+# =====================================
+# Mode: Art quality audit
+# =====================================
+
+def _get_image_size(data: bytes) -> Optional[Tuple[int, int]]:
+    """Attempt to parse JPEG or PNG dimensions from binary data without external libraries."""
+    size = len(data)
+    # PNG
+    if size >= 24 and data.startswith(b'\x89PNG\r\n\x1a\n') and data[12:16] == b'IHDR':
+        w, h = struct.unpack(">LL", data[16:24])
+        return w, h
+    # JPEG
+    if size >= 2 and data.startswith(b'\xff\xd8'):
+        try:
+            i = 2
+            while i < size:
+                while i < size and data[i] != 0xff: i += 1
+                while i < size and data[i] == 0xff: i += 1
+                if i >= size: break
+                marker = data[i]
+                i += 1
+                if marker == 0x01 or 0xd0 <= marker <= 0xd9:
+                    continue
+                if i + 2 > size: break
+                length, = struct.unpack(">H", data[i:i+2])
+                if 0xc0 <= marker <= 0xcf and marker not in (0xc4, 0xc8, 0xcc):
+                    if i + 7 <= size:
+                        h, w = struct.unpack(">HH", data[i+3:i+7])
+                        return w, h
+                i += length
+        except Exception:
+            pass
+    return None
+
+def run_art_quality_audit(root: str, output: str, min_res: int, *, quiet: bool = False) -> int:
+    """Report extracted/folder covers below a resolution threshold."""
+    if not HAVE_MUTAGEN_BASE:
+        print("ERROR: mutagen is required for art quality auditing.", file=sys.stderr)
+        return 2
+
+    from lattice.config import COVER_NAMES
+    from lattice.utils import _make_pbar
+
+    root = os.path.abspath(root)
+    issues: List[Dict[str, str]] = []
+
+    if not quiet:
+        print(f"Auditing art quality (< {min_res}x{min_res}) under: {root}")
+
+    # Count directories for progress
+    dirs_with_audio = []
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        if any(is_audio(f) for f in files):
+            dirs_with_audio.append(dirpath)
+
+    pbar = _make_pbar(len(dirs_with_audio), "Auditing art", quiet)
+
+    for dirpath in dirs_with_audio:
+        pbar.update(1)
+
+        try:
+            dir_files = os.listdir(dirpath)
+        except OSError:
+            continue
+
+        folder_art_path = None
+        for f in dir_files:
+            if f.lower() in COVER_NAMES:
+                folder_art_path = os.path.join(dirpath, f)
+                break
+        
+        art_data = None
+        source = ""
+        
+        if folder_art_path:
+            try:
+                with open(folder_art_path, "rb") as f:
+                    art_data = f.read(8192) # read header
+                source = "folder"
+            except Exception:
+                pass
+                
+        if not art_data:
+            art_data = _extract_best_art(dirpath)
+            source = "embedded"
+            
+        if art_data:
+            dims = _get_image_size(art_data)
+            if dims:
+                w, h = dims
+                if w < min_res or h < min_res:
+                    issues.append({
+                        "directory": dirpath,
+                        "source": source,
+                        "resolution": f"{w}x{h}"
+                    })
+
+    pbar.close()
+
+    out_path = os.path.abspath(output or "art_quality_audit.txt")
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write("ART QUALITY AUDIT REPORT\n")
+        f.write(f"Root: {root}\n")
+        f.write(f"Floor: < {min_res}x{min_res}\n")
+        f.write(f"Scanned: {len(dirs_with_audio)} dirs  Below floor: {len(issues)}\n")
+        f.write("=" * 60 + "\n\n")
+
+        for issue in issues:
+            rel_dir = os.path.relpath(issue["directory"], root)
+            f.write(f"  {rel_dir}/\n")
+            f.write(f"    Source: {issue['source']}  Resolution: {issue['resolution']}\n\n")
+
+    if not quiet:
+        print(f"\nAudited {len(dirs_with_audio)} directories. Found {len(issues)} below {min_res}x{min_res}.")
+        print(f"Results written to: {out_path}")
+
     return 0

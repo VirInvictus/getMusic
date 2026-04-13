@@ -375,10 +375,14 @@ _MAIN_SECTIONS = [
     ("ARTWORK", [
         "Extract cover art",
         "Report missing art",
+        "Audit art quality",
     ]),
     ("METADATA", [
         "Find duplicate albums",
         "Audit tags",
+    ]),
+    ("SETTINGS", [
+        "Change library root",
     ]),
     ("", ["Quit"]),
 ]
@@ -399,13 +403,13 @@ def _select_main() -> Optional[tuple]:
         ("LIBRARY", ["1) Library tree & exports          \u2192",
                       "2) Library statistics"]),
         ("INTEGRITY", ["3) Test FLAC files", "4) Test MP3 files",
-                        "5) Test Opus files"]),
-        ("ARTWORK", ["6) Extract cover art", "7) Report missing art"]),
-        ("METADATA", ["8) Find duplicate albums", "9) Audit tags"]),
+                        "5) Test Opus files", "6) Test WAV files", "7) Test WMA files"]),
+        ("ARTWORK", ["8) Extract cover art", "9) Report missing art", "10) Audit art quality"]),
+        ("METADATA", ["11) Find duplicate albums", "12) Audit tags", "13) Audit bitrates"]),
         ("SETTINGS", ["s) Change library root"]),
         ("", ["q) Quit"]),
     ])
-    return _fallback_input("  Select [1-9/s/q]: ", _MAIN_FALLBACK_MAP)
+    return _fallback_input("  Select [1-13/s/q]: ", _MAIN_FALLBACK_MAP)
 
 def _select_library() -> Optional[tuple]:
     if _USE_CURSES:
@@ -414,10 +418,11 @@ def _select_library() -> Optional[tuple]:
     _box_menu("Library Tree & Exports", [
         ("", ["1) Build music library tree",
               "2) AI-readable library export",
-              "3) Generate all wings (per-genre)"]),
+              "3) Generate all wings (per-genre)",
+              "4) Generate smart playlist (.m3u)"]),
         ("", ["b) Back to main menu"]),
     ])
-    return _fallback_input("  Select [1-3/b]: ", _LIB_FALLBACK_MAP)
+    return _fallback_input("  Select [1-4/b]: ", _LIB_FALLBACK_MAP)
 
 def _tui_page(title: str, content: str) -> None:
     if not _USE_CURSES:
@@ -535,27 +540,38 @@ def _library_submenu(root: str) -> None:
 
         if result == (0, 0):
             output = _prompt_str("Output file", DEFAULT_LIBRARY_OUTPUT) or DEFAULT_LIBRARY_OUTPUT
+            layout = _prompt_str("Path extraction layout", "{artist}/{album}") or "{artist}/{album}"
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             def _wrap():
-                write_music_library_tree(root, output, quiet=False, show_genre=show_g)
+                write_music_library_tree(root, output, layout=layout, quiet=False, show_genre=show_g)
                 print(f"\n  Library written to {output}")
             _run_with_capture("Build music library tree", _wrap)
 
         elif result == (0, 1):
             output = _prompt_str("Output file", DEFAULT_AI_LIBRARY_OUTPUT) or DEFAULT_AI_LIBRARY_OUTPUT
+            layout = _prompt_str("Path extraction layout", "{artist}/{album}") or "{artist}/{album}"
             def _wrap2():
-                write_ai_library(root, output, quiet=False)
+                write_ai_library(root, output, layout=layout, quiet=False)
                 print(f"\n  Library written to {output}")
             _run_with_capture("AI-readable library export", _wrap2)
 
         elif result == (0, 2):
             outdir = _prompt_str("Output directory", "wings") or "wings"
+            layout = _prompt_str("Path extraction layout", "{artist}/{album}") or "{artist}/{album}"
             show_g = _prompt_str("Include genres? (y/N)", "N").lower().startswith('y')
             show_p = _prompt_str("Include paths? (y/N)", "N").lower().startswith('y')
             def _wrap3():
-                write_all_wings(root, outdir, quiet=False, show_genre=show_g, show_paths=show_p)
+                write_all_wings(root, outdir, layout=layout, quiet=False, show_genre=show_g, show_paths=show_p)
                 print(f"\n  Wings generated in {outdir}")
             _run_with_capture("Generate all wings (per-genre)", _wrap3)
+            
+        elif result == (0, 3):
+            output = _prompt_str("Output file", DEFAULT_PLAYLIST_OUTPUT) or DEFAULT_PLAYLIST_OUTPUT
+            rule = _prompt_str("Smart rule (e.g. \"rating >= 4 and genre == 'Jazz'\")", "")
+            layout = _prompt_str("Path extraction layout", "{artist}/{album}") or "{artist}/{album}"
+            def _wrap4():
+                generate_playlist(root, output, rule, layout=layout, quiet=False)
+            _run_with_capture("Generate smart playlist", _wrap4)
 
 def interactive_menu() -> int:
     import lattice.utils as utils
@@ -612,6 +628,20 @@ def interactive_menu() -> int:
             _run_with_capture("Test Opus files", run_opus_mode, root, output, workers, None,
                 only_errors=not include_ok, verbose=include_ok, quiet=False)
 
+        elif result == (1, 3):
+            output = _prompt_str("Output file", DEFAULT_WAV_OUTPUT) or DEFAULT_WAV_OUTPUT
+            workers = _prompt_int("Workers", 4)
+            include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
+            _run_with_capture("Test WAV files", run_wav_mode, root, output, workers, None,
+                only_errors=not include_ok, verbose=include_ok, quiet=False)
+
+        elif result == (1, 4):
+            output = _prompt_str("Output file", DEFAULT_WMA_OUTPUT) or DEFAULT_WMA_OUTPUT
+            workers = _prompt_int("Workers", 4)
+            include_ok = _prompt_str("Include OK rows? (y/N)", "N").lower().startswith('y')
+            _run_with_capture("Test WMA files", run_wma_mode, root, output, workers, None,
+                only_errors=not include_ok, verbose=include_ok, quiet=False)
+
         elif result == (2, 0):
             dry = _prompt_str("Dry run? (y/N)", "N").lower().startswith('y')
             _run_with_capture("Extract cover art", run_extract_art, root, quiet=False, dry_run=dry)
@@ -627,3 +657,8 @@ def interactive_menu() -> int:
         elif result == (3, 1):
             output = _prompt_str("Output file", DEFAULT_TAG_AUDIT_OUTPUT) or DEFAULT_TAG_AUDIT_OUTPUT
             _run_with_capture("Audit tags", run_tag_audit, root, output, quiet=False)
+
+        elif result == (3, 2):
+            output = _prompt_str("Output file", DEFAULT_BITRATE_AUDIT_OUTPUT) or DEFAULT_BITRATE_AUDIT_OUTPUT
+            min_kbps = _prompt_int("Minimum bitrate floor (kbps)", 192)
+            _run_with_capture("Audit bitrates", run_bitrate_audit, root, output, min_kbps, quiet=False)

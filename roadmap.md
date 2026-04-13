@@ -1,6 +1,6 @@
 # Lattice — Roadmap
 
-What's done, what's next, what's deferred. Sequenced for maximum utility as a standalone library management suite. Updated as of v4.1.3.
+What's done, what's next, what's deferred. Sequenced for maximum utility as a standalone library management suite. Updated as of v4.2.0.
 
 ---
 
@@ -11,8 +11,8 @@ What's done, what's next, what's deferred. Sequenced for maximum utility as a st
 - [x] **Cover Art Priority Extraction** — Extract embedded art prioritizing FLAC > Opus > M4A > MP3.
 - [x] **Front Cover Preference** — Prefer ID3 APIC/FLAC type 3 over generic embedded images.
 - [x] **Modern Architecture** — Migrate from monolithic script to a modular `src/lattice` package via Hatch (`pyproject.toml`).
-- [ ] **Configurable Layout** — Support non-standard directory structures via pattern argument instead of strict `ARTIST/ALBUM/Track.ext`.
-- [ ] **Fix Close button trying to change music root location** - This should just exit.
+- [x] **Configurable Layout** — Support non-standard directory structures via pattern argument instead of strict `ARTIST/ALBUM/Track.ext`.
+- [x] **Fix Close button trying to change music root location** - This should just exit.
 
 ## Phase 2: Integrity & Auditing (Validation Layer)
 - [x] **Parallel FLAC Verification** — Spawn parallel workers to run `flac -t` or `ffmpeg` to detect corruption.
@@ -21,9 +21,9 @@ What's done, what's next, what's deferred. Sequenced for maximum utility as a st
 - [x] **Duplicate Detection** — Detect the same artist + album combination appearing across multiple directories or formats.
 - [x] **Missing Art Reporting** — Distinguish between directories with absolutely no art and those with only embedded art.
 - [x] **Case-Insensitive Cover Detection** — Detect `cover.jpg`, `Folder.png`, etc. without case sensitivity issues.
-- [ ] **WAV/WMA Integrity** — Extend the unified decode scanner to cover remaining legacy formats.
-- [ ] **Art Quality Audit** — Report extracted/folder covers below a resolution threshold (e.g., < 500x500).
-- [ ] **Bitrate Floor Audit** — Flag audio files falling below a configurable bitrate floor (e.g., < 192 kbps).
+- [x] **WAV/WMA Integrity** — Extend the unified decode scanner to cover remaining legacy formats.
+- [x] **Art Quality Audit** — Report extracted/folder covers below a resolution threshold (e.g., < 500x500).
+- [x] **Bitrate Floor Audit** — Flag audio files falling below a configurable bitrate floor (e.g., < 192 kbps).
 
 ## Phase 3: Reporting & Generation (Output Layer)
 - [x] **Library Tree Generation** — Build beautiful ASCII/Unicode trees displaying artists, albums, tracks, and ratings.
@@ -31,9 +31,9 @@ What's done, what's next, what's deferred. Sequenced for maximum utility as a st
 - [x] **AI-Readable Export** — Generate a token-efficient, pipe-delimited library dump designed for LLM prompts.
 - [x] **Genre Wings** — Generate separate library `.txt` files for every detected genre in the collection.
 - [x] **Library Statistics** — Generate reports on formats, bitrates, top artists, top genres, and rating distributions.
-- [ ] **Playlist Export (.m3u)** — Generate standard `.m3u` playlists from library tree filters (e.g., 5-star only, specific genre).
-- [ ] **Smart Playlists** — Dynamic rule-based `.m3u` generation (e.g., "rating >= 4 AND genre == 'Jazz'").
-- [ ] **Rating Distribution per Genre** — Cross-tabulate rating spread specific to each genre inside `--stats`.
+- [x] **Playlist Export (.m3u)** — Generate standard `.m3u` playlists from library tree filters (e.g., 5-star only, specific genre).
+- [x] **Smart Playlists** — Dynamic rule-based `.m3u` generation (e.g., "rating >= 4 AND genre == 'Jazz'").
+- [x] **Rating Distribution per Genre** — Cross-tabulate rating spread specific to each genre inside `--stats`.
 
 ## Phase 4: Interface & Experience (UX Layer)
 - [x] **Full-Screen Curses TUI** — Arrow-key navigation, color-coded section groups, and styled Unicode box drawing.

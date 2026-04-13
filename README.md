@@ -42,14 +42,19 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 | **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
 | **AI library export** | `--ai-library` | Token-efficient flat export for LLM recommendation prompts |
 | **Genre wings** | `--all-wings` | Generates a separate library tree file for each genre |
+| **Smart Playlist** | `--playlist` | Generates an .m3u playlist based on a dynamic rule (e.g. `rating >= 4`) |
 | **Library statistics** | `--stats` | Library-wide statistics: format breakdown, bitrate, ratings, genres, top artists |
 | **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, reports failures to text |
 | **MP3 integrity** | `--testMP3` | Decodes MP3 files through FFmpeg, reports errors and warnings to text |
 | **Opus integrity** | `--testOpus` | Decodes Opus files through FFmpeg, reports errors and warnings to text |
+| **WAV integrity** | `--testWAV` | Verifies WAV files through FFmpeg, reports errors |
+| **WMA integrity** | `--testWMA` | Verifies WMA files through FFmpeg, reports errors |
 | **Cover art extraction** | `--extractArt` | Extracts embedded art to `cover.jpg` with format priority ranking |
 | **Missing art report** | `--missingArt` | Lists directories with no cover art (folder or embedded) to text |
+| **Art quality audit** | `--auditArtQuality` | Reports extracted/folder covers below a resolution threshold |
 | **Duplicate detection** | `--duplicates` | Finds same artist+album appearing across multiple directories/formats |
 | **Tag audit** | `--auditTags` | Reports files missing title, artist, track number, or genre to text |
+| **Bitrate audit** | `--auditBitrate` | Reports files falling below a minimum bitrate floor |
 | **Version** | `--version` | Prints version and exits |
 
 Running with no arguments launches an interactive TUI — a full-screen curses interface with arrow-key navigation, color-coded section groups (Library, Integrity, Artwork, Metadata), and a highlighted selection cursor. Menus, parameter prompts, and pause screens all render inside styled Unicode boxes for a consistent experience. Library tree, AI export, and genre wings live in a dedicated submenu. Falls back to typed input if curses is unavailable.

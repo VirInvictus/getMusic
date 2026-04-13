@@ -95,16 +95,22 @@ def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> str:
                 r = int(t.rating)
                 if r >= 5:
                     rating_counts["★★★★★ (5)"] += 1
+                    if t.genre: genre_ratings[t.genre]["★★★★★ (5)"] += 1
                 elif r >= 4:
                     rating_counts["★★★★☆ (4)"] += 1
+                    if t.genre: genre_ratings[t.genre]["★★★★☆ (4)"] += 1
                 elif r >= 3:
                     rating_counts["★★★☆☆ (3)"] += 1
+                    if t.genre: genre_ratings[t.genre]["★★★☆☆ (3)"] += 1
                 elif r >= 2:
                     rating_counts["★★☆☆☆ (2)"] += 1
+                    if t.genre: genre_ratings[t.genre]["★★☆☆☆ (2)"] += 1
                 else:
                     rating_counts["★☆☆☆☆ (1)"] += 1
+                    if t.genre: genre_ratings[t.genre]["★☆☆☆☆ (1)"] += 1
             else:
                 rating_counts["unrated"] += 1
+                if t.genre: genre_ratings[t.genre]["unrated"] += 1
 
             # Duration and bitrate — now carried by TagBundle
             if t.duration_s:

@@ -383,3 +383,25 @@ def run_opus_mode(
         default_output=DEFAULT_OPUS_OUTPUT, ffmpeg_required=True,
         enrich=False, only_errors=only_errors, verbose=verbose, quiet=quiet,
     )
+
+def run_wav_mode(
+        root: str, output: str, workers: int, ffmpeg: Optional[str],
+        *, only_errors: bool, verbose: bool, quiet: bool,
+) -> int:
+    return _run_decode_scan(
+        root, output, workers, ffmpeg,
+        ext=".wav", report_title="WAV INTEGRITY REPORT",
+        default_output=DEFAULT_WAV_OUTPUT, ffmpeg_required=True,
+        enrich=False, only_errors=only_errors, verbose=verbose, quiet=quiet,
+    )
+
+def run_wma_mode(
+        root: str, output: str, workers: int, ffmpeg: Optional[str],
+        *, only_errors: bool, verbose: bool, quiet: bool,
+) -> int:
+    return _run_decode_scan(
+        root, output, workers, ffmpeg,
+        ext=".wma", report_title="WMA INTEGRITY REPORT",
+        default_output=DEFAULT_WMA_OUTPUT, ffmpeg_required=True,
+        enrich=False, only_errors=only_errors, verbose=verbose, quiet=quiet,
+    )

@@ -168,3 +168,74 @@ def run_tag_audit(root: str, output: str, *, quiet: bool = False) -> int:
                 print(f"    {field}: {count}")
 
     return 0
+
+# =====================================
+# Mode: Bitrate floor audit
+# =====================================
+
+def run_bitrate_audit(root: str, output: str, min_kbps: int, *, quiet: bool = False) -> int:
+    """Report audio files falling below a specified bitrate floor."""
+    if not HAVE_MUTAGEN_BASE:
+        print("ERROR: mutagen is required for bitrate auditing.", file=sys.stderr)
+        return 2
+
+    root = os.path.abspath(root)
+    issues: List[Dict[str, str]] = []
+
+    if not quiet:
+        print(f"Auditing bitrates (< {min_kbps} kbps) under: {root}")
+
+    total = count_audio_files(root)
+    pbar = _make_pbar(total, "Auditing bitrates", quiet)
+
+    for dirpath, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+
+        for f in sorted(files):
+            ext = os.path.splitext(f)[1].lower()
+            if ext not in AUDIO_EXTENSIONS:
+                continue
+
+            pbar.update(1)
+
+            filepath = os.path.join(dirpath, f)
+            t = get_all_tags(filepath)
+
+            if t.bitrate_kbps is not None and t.bitrate_kbps > 0 and t.bitrate_kbps < min_kbps:
+                issues.append({
+                    "path": filepath,
+                    "format": ext.strip('.'),
+                    "bitrate": str(t.bitrate_kbps),
+                })
+
+    pbar.close()
+
+    out_path = os.path.abspath(output or DEFAULT_TAG_AUDIT_OUTPUT.replace('tag_audit', 'bitrate_audit'))
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+
+    by_dir: Dict[str, List[Dict[str, str]]] = defaultdict(list)
+    for issue in issues:
+        parent = os.path.dirname(issue["path"])
+        by_dir[parent].append(issue)
+
+    with open(out_path, "w", encoding="utf-8") as out_file:
+        out_file.write("BITRATE AUDIT REPORT\n")
+        out_file.write(f"Root: {root}\n")
+        out_file.write(f"Floor: < {min_kbps} kbps\n")
+        out_file.write(f"Scanned: {total}  Below floor: {len(issues)}\n")
+        out_file.write("=" * 60 + "\n\n")
+
+        for directory in sorted(by_dir.keys()):
+            rel_dir = os.path.relpath(directory, root)
+            out_file.write(f"  {rel_dir}/\n")
+            for issue in by_dir[directory]:
+                filename = os.path.basename(issue["path"])
+                out_file.write(f"    {filename}  [{issue['format']}]  {issue['bitrate']} kbps\n")
+            out_file.write("\n")
+
+    if not quiet:
+        print(f"\nAudited {total} files. Found {len(issues)} below {min_kbps} kbps.")
+        print(f"Results written to: {out_path}")
+
+    return 0
+
