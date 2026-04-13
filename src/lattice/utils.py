@@ -157,17 +157,6 @@ class _TUIPbar:
         self.total = total
         self.desc = desc
         self.current = 0
-        import curses
-        self.stdscr = curses.initscr()
-        curses.start_color()
-        curses.use_default_colors()
-        # Uses the same colors as tui.py
-        curses.init_pair(1, curses.COLOR_CYAN, -1)     # _CP_FRAME
-        curses.init_pair(2, curses.COLOR_WHITE, -1)    # _CP_TITLE
-        curses.init_pair(3, curses.COLOR_YELLOW, -1)   # _CP_HEADER
-        curses.init_pair(4, curses.COLOR_WHITE, -1)    # _CP_ITEM
-        curses.curs_set(0)
-        
         self.draw()
 
     def update(self, n: int = 1) -> None:
@@ -176,19 +165,27 @@ class _TUIPbar:
 
     def draw(self) -> None:
         import curses
-        self.stdscr.erase()
-        h, w = self.stdscr.getmaxyx()
-        box_w = 46  # Same width as TUI
-        inner = box_w - 2
-        bx = max(0, (w - box_w) // 2)
-        y = max(0, (h - 5) // 2)
-        
+        # Get the global stdscr without calling initscr
+        stdscr = curses.newwin(0,0) # dummy
         try:
-            self.stdscr.addstr(y, bx, "╔" + "═" * inner + "╗", curses.color_pair(1))
-            self.stdscr.addstr(y+1, bx, "║", curses.color_pair(1))
-            self.stdscr.addstr(y+1, bx+1, f" {self.desc}".ljust(inner), curses.color_pair(3) | curses.A_BOLD)
-            self.stdscr.addstr(y+1, bx+box_w-1, "║", curses.color_pair(1))
-            self.stdscr.addstr(y+2, bx, "╠" + "═" * inner + "╣", curses.color_pair(1))
+            # We can't easily get the main stdscr here without passing it,
+            # but we can use curses.wrapper's provided screen if we are careful.
+            # However, in this architecture, we'll just try to use the current screen.
+            # A better way is to use curses.initscr() but NOT call endwin().
+            # Actually, the TUI already has a screen active.
+            s = curses.initscr()
+            s.erase()
+            h, w = s.getmaxyx()
+            box_w = 46  # Same width as TUI
+            inner = box_w - 2
+            bx = max(0, (w - box_w) // 2)
+            y = max(0, (h - 5) // 2)
+            
+            s.addstr(y, bx, "╔" + "═" * inner + "╗", curses.color_pair(1))
+            s.addstr(y+1, bx, "║", curses.color_pair(1))
+            s.addstr(y+1, bx+1, f" {self.desc}".ljust(inner), curses.color_pair(3) | curses.A_BOLD)
+            s.addstr(y+1, bx+box_w-1, "║", curses.color_pair(1))
+            s.addstr(y+2, bx, "╠" + "═" * inner + "╣", curses.color_pair(1))
             
             percent = self.current / max(1, self.total)
             bar_len = inner - 10
@@ -196,17 +193,16 @@ class _TUIPbar:
             bar = "█" * filled + "░" * (bar_len - filled)
             pct_str = f"{int(percent*100):3d}%"
             
-            self.stdscr.addstr(y+3, bx, "║", curses.color_pair(1))
-            self.stdscr.addstr(y+3, bx+1, f" {bar} {pct_str} ".ljust(inner), curses.color_pair(0))
-            self.stdscr.addstr(y+3, bx+box_w-1, "║", curses.color_pair(1))
-            self.stdscr.addstr(y+4, bx, "╚" + "═" * inner + "╝", curses.color_pair(1))
-            self.stdscr.refresh()
+            s.addstr(y+3, bx, "║", curses.color_pair(1))
+            s.addstr(y+3, bx+1, f" {bar} {pct_str} ".ljust(inner))
+            s.addstr(y+3, bx+box_w-1, "║", curses.color_pair(1))
+            s.addstr(y+4, bx, "╚" + "═" * inner + "╝", curses.color_pair(1))
+            s.refresh()
         except curses.error:
             pass
 
     def close(self) -> None:
-        import curses
-        curses.endwin()
+        pass
 
 class _FallbackProgress:
     """Simple progress bar for when tqdm is not installed."""

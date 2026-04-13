@@ -1,5 +1,15 @@
 # Lattice — Patch Notes
 
+## v4.2.2 (2026-04-13)
+
+---
+
+### Bug Fixes
+- **TUI Persistence Fix:** Fixed an issue where the TUI would exit or "blink" back to the menu when running background tasks (like Stats). This was caused by the progress bar calling `curses.endwin()`, which terminated the curses session prematurely.
+- **Improved Progress Bar:** The TUI progress bar now correctly updates within the existing curses session without corrupting the terminal state.
+
+---
+
 ## v4.2.1 (2026-04-13)
 
 ---
