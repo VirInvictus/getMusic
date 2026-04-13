@@ -1,5 +1,16 @@
 # Lattice — Patch Notes
 
+## v4.2.1 (2026-04-13)
+
+---
+
+### Bug Fixes
+- **Stats Page Fix:** Fixed a `NameError` in the statistics module where `genre_ratings` was not properly initialized.
+- **Missing Report:** Properly implemented the "Rating Distribution per Genre" report section in `--stats` which was previously omitted.
+- **Version Synchronization:** Corrected version mismatches across the repository.
+
+---
+
 ## v4.2.0 (2026-04-13)
 
 ---

@@ -48,6 +48,10 @@ def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> str:
         "★★★★★ (5)": 0, "★★★★☆ (4)": 0, "★★★☆☆ (3)": 0,
         "★★☆☆☆ (2)": 0, "★☆☆☆☆ (1)": 0, "unrated": 0,
     }
+    genre_ratings: Dict[str, Dict[str, int]] = defaultdict(lambda: {
+        "★★★★★ (5)": 0, "★★★★☆ (4)": 0, "★★★☆☆ (3)": 0,
+        "★★☆☆☆ (2)": 0, "★☆☆☆☆ (1)": 0, "unrated": 0,
+    })
     total_size = 0
     total_duration = 0.0
     album_dirs: set = set()
@@ -192,6 +196,18 @@ def run_stats(root: str, output: Optional[str], *, quiet: bool = False) -> str:
         for genre, count in genre_counts.most_common(15):
             pct = count / total_files * 100
             lines.append(f"  {genre:<30} {count:>5}  ({pct:.1f}%)")
+        lines.append("")
+
+    # Rating distribution per genre
+    if genre_ratings:
+        lines.append("RATING DISTRIBUTION PER GENRE")
+        lines.append("-" * 40)
+        for genre, _ in genre_counts.most_common(15):
+            lines.append(f"  {genre}:")
+            for label in ["★★★★★ (5)", "★★★★☆ (4)", "★★★☆☆ (3)", "★★☆☆☆ (2)", "★☆☆☆☆ (1)", "unrated"]:
+                count = genre_ratings[genre][label]
+                if count > 0:
+                    lines.append(f"    {label}  {count:>5}")
         lines.append("")
 
     # Top artists (top 15)
