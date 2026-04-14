@@ -29,16 +29,6 @@ Modern music players often hide your library behind proprietary databases. Latti
 | **Art Extraction** | `--extractArt` | Extract embedded covers with format-priority ranking (FLAC > Opus). |
 | **Tag Audit** | `--auditTags` | Identify and report files with missing or inconsistent metadata. |
 
-## Installation
-
-```bash
-# Recommended: install via pipx for global access
-pipx install .
-
-# Or run from source
-python -m lattice --stats
-```
-
 ## Development & Testing
 
 Lattice is architected as a modular Python package.
@@ -110,13 +100,6 @@ pipx install .
 python -m venv .venv
 source .venv/bin/activate
 pip install .
-```
-
-**Option 3: Compile a standalone binary (PyInstaller)**
-```bash
-pip install .[pyinstaller] pyinstaller
-pyinstaller --onefile --name lattice --paths src src/lattice/__main__.py
-# Move the compiled `lattice` binary from the `dist` folder to anywhere in your PATH.
 ```
 
 **System tools (integrity modes):**
