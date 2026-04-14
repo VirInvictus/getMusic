@@ -19,25 +19,49 @@ def write_music_library_tree(root_dir: str, output_file: str, *, layout: str = "
 
     pbar = _make_pbar(total_files, "Scanning library", quiet)
 
-    tree: Dict[str, Dict[str, List[Tuple[str, str, TagBundle]]]] = defaultdict(lambda: defaultdict(list))
-    album_paths: Dict[Tuple[str, str], str] = {}
+    # directory -> {artist: str, album: str, songs: list}
+    albums_by_dir: Dict[str, Dict] = {}
 
     for dirpath, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
-        for f in files:
-            if is_audio(f):
-                filepath = os.path.join(dirpath, f)
-                rel_path = os.path.relpath(filepath, root_dir)
-                parsed = parse_layout(rel_path, layout)
-                t = get_all_tags(filepath)
-                artist = t.artist or parsed.get("artist", "Unknown Artist")
-                album = t.album or parsed.get("album", "Unknown Album")
-                tree[artist][album].append((f, filepath, t))
-                if (artist, album) not in album_paths:
-                    album_paths[(artist, album)] = dirpath
-                pbar.update(1)
+        audio_in_dir = [f for f in files if is_audio(f)]
+        if not audio_in_dir:
+            continue
+            
+        artists_count: Dict[str, int] = defaultdict(int)
+        albums_count: Dict[str, int] = defaultdict(int)
+        songs = []
+        
+        for f in audio_in_dir:
+            filepath = os.path.join(dirpath, f)
+            rel_path = os.path.relpath(filepath, root_dir)
+            parsed = parse_layout(rel_path, layout)
+            t = get_all_tags(filepath)
+            
+            artist = t.artist or parsed.get("artist", "Unknown Artist")
+            album = t.album or parsed.get("album", "Unknown Album")
+            
+            artists_count[artist] += 1
+            albums_count[album] += 1
+            songs.append((f, filepath, t))
+            pbar.update(1)
+            
+        best_artist = max(artists_count, key=artists_count.get) if artists_count else "Unknown Artist"
+        best_album = max(albums_count, key=albums_count.get) if albums_count else "Unknown Album"
+        
+        albums_by_dir[dirpath] = {
+            "artist": best_artist,
+            "album": best_album,
+            "songs": songs
+        }
 
     pbar.close()
+
+    # Re-group for display: artist -> album_name -> list of songs
+    # We still want to group same-artist albums together in the output
+    tree: Dict[str, Dict[str, List[Tuple[str, str, TagBundle]]]] = defaultdict(lambda: defaultdict(list))
+    for data in albums_by_dir.values():
+        tree[data["artist"]][data["album"]].extend(data["songs"])
 
     output_file = os.path.abspath(output_file)
     os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
@@ -100,42 +124,70 @@ def write_ai_library(root_dir: str, output_file: str, *, layout: str = "{artist}
 
     pbar = _make_pbar(total, "Building AI library", quiet)
 
-    tree: Dict[str, Dict[str, List[Tuple[str, str, TagBundle]]]] = defaultdict(lambda: defaultdict(list))
+    # directory -> {artist: str, album: str, genre: str, songs: list}
+    albums_by_dir: Dict[str, Dict] = {}
+
     for dirpath, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
-        for f in files:
-            if is_audio(f):
-                filepath = os.path.join(dirpath, f)
-                rel_path = os.path.relpath(filepath, root_dir)
-                parsed = parse_layout(rel_path, layout)
-                t = get_all_tags(filepath)
-                artist = t.artist or parsed.get("artist", "Unknown Artist")
-                album = t.album or parsed.get("album", "Unknown Album")
-                tree[artist][album].append((f, filepath, t))
-                pbar.update(1)
+        audio_in_dir = [f for f in files if is_audio(f)]
+        if not audio_in_dir:
+            continue
+            
+        artists_count: Dict[str, int] = defaultdict(int)
+        albums_count: Dict[str, int] = defaultdict(int)
+        genres_count: Dict[str, int] = defaultdict(int)
+        songs = []
+
+        for f in audio_in_dir:
+            filepath = os.path.join(dirpath, f)
+            rel_path = os.path.relpath(filepath, root_dir)
+            parsed = parse_layout(rel_path, layout)
+            t = get_all_tags(filepath)
+            artist = t.artist or parsed.get("artist", "Unknown Artist")
+            album = t.album or parsed.get("album", "Unknown Album")
+            
+            artists_count[artist] += 1
+            albums_count[album] += 1
+            if t.genre:
+                genres_count[t.genre] += 1
+            songs.append((f, filepath, t))
+            pbar.update(1)
+            
+        best_artist = max(artists_count, key=artists_count.get) if artists_count else "Unknown Artist"
+        best_album = max(albums_count, key=albums_count.get) if albums_count else "Unknown Album"
+        best_genre = max(genres_count, key=genres_count.get) if genres_count else ""
+        
+        albums_by_dir[dirpath] = {
+            "artist": best_artist,
+            "album": best_album,
+            "genre": best_genre,
+            "songs": songs
+        }
 
     pbar.close()
 
     albums: List[Tuple[str, str, str, str, int]] = []
-    for artist in sorted(tree.keys()):
-        for album in sorted(tree[artist].keys()):
-            songs = tree[artist][album]
-            album_genre = ""
-            ratings: List[float] = []
-            
-            for song, song_path, t in songs:
-                if not album_genre and t.genre:
-                    album_genre = t.genre
-                if t.rating is not None:
-                    ratings.append(t.rating)
-                    
-            if ratings:
-                avg = sum(ratings) / len(ratings)
-                rating_str = f"{avg:.1f}"
-            else:
-                rating_str = ""
+    for data in albums_by_dir.values():
+        artist = data["artist"]
+        album = data["album"]
+        songs = data["songs"]
+        album_genre = data["genre"]
+        
+        ratings: List[float] = []
+        for song_f, song_path, t in songs:
+            if t.rating is not None:
+                ratings.append(t.rating)
+                
+        if ratings:
+            avg = sum(ratings) / len(ratings)
+            rating_str = f"{avg:.1f}"
+        else:
+            rating_str = ""
 
-            albums.append((artist, album, album_genre, rating_str, len(songs)))
+        albums.append((artist, album, album_genre, rating_str, len(songs)))
+
+    # Sort final albums list by artist then album
+    albums.sort(key=lambda x: (x[0].lower(), x[1].lower()))
 
     out_path = os.path.abspath(output_file)
     os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
@@ -163,45 +215,64 @@ def write_all_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{albu
 
     pbar = _make_pbar(total, "Scanning genres", quiet)
     
-    # genre -> artist -> album -> list of (song, song_path, t)
-    wings: Dict[str, Dict[str, Dict[str, List[Tuple[str, str, TagBundle]]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    album_paths: Dict[Tuple[str, str], str] = {}
+    # directory -> {artist: str, album: str, genre: str, songs: list}
+    albums_by_dir: Dict[str, Dict] = {}
 
     for dirpath, dirs, files in os.walk(root_dir):
         dirs[:] = [d for d in dirs if not d.startswith('.')]
-        for f in files:
-            if is_audio(f):
-                filepath = os.path.join(dirpath, f)
-                rel_path = os.path.relpath(filepath, root_dir)
-                parsed = parse_layout(rel_path, layout)
-                t = get_all_tags(filepath)
-                artist = t.artist or parsed.get("artist", "Unknown Artist")
-                album = t.album or parsed.get("album", "Unknown Album")
-                
-                # We determine the genre for the album from the first song with a genre
-                # But since we scan all songs, we'll collect them all under a temporary generic unassigned genre first
-                wings["_temp_"][artist][album].append((f, filepath, t))
-                if (artist, album) not in album_paths:
-                    album_paths[(artist, album)] = dirpath
-                pbar.update(1)
+        audio_in_dir = [f for f in files if is_audio(f)]
+        if not audio_in_dir:
+            continue
+            
+        artists_count: Dict[str, int] = defaultdict(int)
+        albums_count: Dict[str, int] = defaultdict(int)
+        genres_count: Dict[str, int] = defaultdict(int)
+        songs = []
+        
+        for f in audio_in_dir:
+            filepath = os.path.join(dirpath, f)
+            rel_path = os.path.relpath(filepath, root_dir)
+            parsed = parse_layout(rel_path, layout)
+            t = get_all_tags(filepath)
+            artist = t.artist or parsed.get("artist", "Unknown Artist")
+            album = t.album or parsed.get("album", "Unknown Album")
+            
+            artists_count[artist] += 1
+            albums_count[album] += 1
+            if t.genre:
+                genres_count[t.genre] += 1
+            songs.append((f, filepath, t))
+            pbar.update(1)
+
+        best_artist = max(artists_count, key=artists_count.get) if artists_count else "Unknown Artist"
+        best_album = max(albums_count, key=albums_count.get) if albums_count else "Unknown Album"
+        best_genre = max(genres_count, key=genres_count.get) if genres_count else "Uncategorized"
+
+        albums_by_dir[dirpath] = {
+            "artist": best_artist,
+            "album": best_album,
+            "genre": best_genre,
+            "songs": songs
+        }
 
     pbar.close()
     
-    if not wings["_temp_"]:
+    if not albums_by_dir:
         print("No albums found under root.", file=sys.stderr)
         return 1
         
-    # Re-bucket by true album genre
+    # Re-bucket by genre -> artist -> album
     final_wings: Dict[str, Dict[str, Dict[str, List[Tuple[str, str, TagBundle]]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    for artist in wings["_temp_"]:
-        for album in wings["_temp_"][artist]:
-            songs = wings["_temp_"][artist][album]
-            album_genre = ""
-            for song, path, t in songs:
-                if t.genre:
-                    album_genre = t.genre
-                    break
-            final_wings[album_genre or "Uncategorized"][artist][album] = songs
+    album_paths: Dict[Tuple[str, str], str] = {}
+    
+    for dirpath, data in albums_by_dir.items():
+        genre = data["genre"]
+        artist = data["artist"]
+        album = data["album"]
+        songs = data["songs"]
+        
+        final_wings[genre][artist][album].extend(songs)
+        album_paths[(artist, album)] = dirpath
 
     os.makedirs(outdir, exist_ok=True)
 
@@ -260,4 +331,87 @@ def write_all_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{albu
     if not quiet:
         total_albums = sum(sum(len(albums) for albums in artist_albums.values()) for artist_albums in final_wings.values())
         print(f"\n{len(final_wings)} wings ({total_albums} albums) written to: {outdir}")
+    return 0
+
+# =====================================
+# Mode: AI wings (per-genre flat files)
+# =====================================
+
+def write_ai_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{album}", quiet: bool = False) -> int:
+    """Generate separate, token-efficient AI library files for each genre."""
+    root_dir = os.path.abspath(root_dir)
+    total = count_audio_files(root_dir)
+    if not quiet:
+        print(f"Scanning {total} files for AI wings...")
+
+    pbar = _make_pbar(total, "Scanning genres", quiet)
+    
+    # genre -> list of (artist, album, genre, path)
+    wings: Dict[str, List[Tuple[str, str, str, str]]] = defaultdict(list)
+    
+    # directory -> {artists: {name: count}, albums: {name: count}, genres: {name: count}}
+    album_data: Dict[str, Dict] = defaultdict(lambda: {
+        "artists": defaultdict(int),
+        "albums": defaultdict(int),
+        "genres": defaultdict(int)
+    })
+
+    for dirpath, dirs, files in os.walk(root_dir):
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for f in files:
+            if is_audio(f):
+                filepath = os.path.join(dirpath, f)
+                rel_path = os.path.relpath(filepath, root_dir)
+                parsed = parse_layout(rel_path, layout)
+                t = get_all_tags(filepath)
+                artist = t.artist or parsed.get("artist", "Unknown Artist")
+                album = t.album or parsed.get("album", "Unknown Album")
+                
+                album_data[dirpath]["artists"][artist] += 1
+                album_data[dirpath]["albums"][album] += 1
+                if t.genre:
+                    album_data[dirpath]["genres"][t.genre] += 1
+                pbar.update(1)
+
+    pbar.close()
+    
+    if not album_data:
+        print("No albums found under root.", file=sys.stderr)
+        return 1
+
+    # Finalize data for each directory
+    for dirpath, data in album_data.items():
+        # Pick most frequent artist, album, and genre for this directory
+        best_artist = max(data["artists"], key=data["artists"].get) if data["artists"] else "Unknown Artist"
+        best_album = max(data["albums"], key=data["albums"].get) if data["albums"] else "Unknown Album"
+        
+        if data["genres"]:
+            album_genre = max(data["genres"], key=data["genres"].get)
+        else:
+            album_genre = "Uncategorized"
+        
+        wings[album_genre].append((best_artist, best_album, album_genre, dirpath))
+
+    os.makedirs(outdir, exist_ok=True)
+
+    if not quiet:
+        print(f"\nFound {len(wings)} genres. Writing AI wings...\n")
+
+    for genre_name in sorted(wings):
+        albums = sorted(wings[genre_name])
+        safe_name = re.sub(r'[^\w\s-]', '', genre_name).strip().replace(' ', '_')
+        output = os.path.join(outdir, f"{safe_name}_AI.txt")
+
+        if not quiet:
+            print(f"→ {genre_name} ({len(albums)} albums)")
+
+        with open(output, 'w', encoding='utf-8') as f:
+            f.write("Artist | Album | Genre | Location\n")
+            f.write("-" * 60 + "\n")
+            for artist, album, genre, path in albums:
+                f.write(f"{artist} | {album} | {genre} | {path}\n")
+
+    if not quiet:
+        total_albums = sum(len(a) for a in wings.values())
+        print(f"\n{len(wings)} AI wings ({total_albums} albums) written to: {outdir}")
     return 0

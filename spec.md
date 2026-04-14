@@ -1,6 +1,6 @@
 # Lattice — Application Specification
 
-**Version:** 4.2.1  
+**Version:** 4.3.1  
 **Language:** Python 3.9+  
 **Dependencies:** mutagen, tqdm  
 **License:** MIT
@@ -70,6 +70,7 @@ scripting and automation. All modes accept `--root`, `--output`, `--workers`,
 |------|------|-------------|
 | Library tree | `--library` | Formatted text tree with artist/album/track/rating/genre |
 | AI export | `--ai-library` | Token-efficient flat export for LLM recommendation prompts |
+| AI wings | `--ai-wings` | Separate flat library files per genre for AI processing |
 | Genre wings | `--all-wings` | Separate library tree file per genre |
 | Statistics | `--stats` | Format breakdown, bitrate, ratings, genres, top artists |
 | FLAC integrity | `--testFLAC` | Verify via `flac -t` or FFmpeg with parallel workers |

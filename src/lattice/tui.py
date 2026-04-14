@@ -19,9 +19,11 @@ from lattice.config import (
     DEFAULT_MISSING_ART_OUTPUT,
     DEFAULT_DUPLICATES_OUTPUT,
     DEFAULT_TAG_AUDIT_OUTPUT,
+    DEFAULT_PLAYLIST_OUTPUT,
 )
 
-from lattice.modes.library import write_music_library_tree, write_ai_library, write_all_wings
+from lattice.modes.library import write_music_library_tree, write_ai_library, write_all_wings, write_ai_wings
+from lattice.modes.playlists import generate_playlist
 from lattice.modes.stats import run_stats
 from lattice.modes.integrity import run_flac_mode, run_mp3_mode, run_opus_mode
 from lattice.modes.artwork import run_extract_art, run_missing_art
@@ -352,6 +354,8 @@ _LIB_FALLBACK_MAP: Dict[str, Optional[tuple]] = {
     "1": (0, 0), "tree": (0, 0), "lib": (0, 0),
     "2": (0, 1), "ai": (0, 1),
     "3": (0, 2), "wings": (0, 2),
+    "4": (0, 3), "ai-wings": (0, 3),
+    "5": (0, 4), "playlist": (0, 4),
     "b": None, "back": None, "": None,
 }
 
@@ -392,6 +396,8 @@ _LIB_SECTIONS = [
         "Build music library tree",
         "AI-readable library export",
         "Generate all wings (per-genre)",
+        "Generate AI wings (per-genre flat)",
+        "Generate smart playlist (.m3u)",
     ]),
     ("", ["Back to main menu"]),
 ]
@@ -419,10 +425,11 @@ def _select_library() -> Optional[tuple]:
         ("", ["1) Build music library tree",
               "2) AI-readable library export",
               "3) Generate all wings (per-genre)",
-              "4) Generate smart playlist (.m3u)"]),
+              "4) Generate AI wings (per-genre flat)",
+              "5) Generate smart playlist (.m3u)"]),
         ("", ["b) Back to main menu"]),
     ])
-    return _fallback_input("  Select [1-4/b]: ", _LIB_FALLBACK_MAP)
+    return _fallback_input("  Select [1-5/b]: ", _LIB_FALLBACK_MAP)
 
 def _tui_page(title: str, content: str) -> None:
     if not _USE_CURSES:
@@ -564,8 +571,16 @@ def _library_submenu(root: str) -> None:
                 write_all_wings(root, outdir, layout=layout, quiet=False, show_genre=show_g, show_paths=show_p)
                 print(f"\n  Wings generated in {outdir}")
             _run_with_capture("Generate all wings (per-genre)", _wrap3)
-            
+
         elif result == (0, 3):
+            outdir = _prompt_str("Output directory", "wings_ai") or "wings_ai"
+            layout = _prompt_str("Path extraction layout", "{artist}/{album}") or "{artist}/{album}"
+            def _wrap_ai():
+                write_ai_wings(root, outdir, layout=layout, quiet=False)
+                print(f"\n  AI Wings generated in {outdir}")
+            _run_with_capture("Generate AI wings (per-genre flat)", _wrap_ai)
+
+        elif result == (0, 4):
             output = _prompt_str("Output file", DEFAULT_PLAYLIST_OUTPUT) or DEFAULT_PLAYLIST_OUTPUT
             rule = _prompt_str("Smart rule (e.g. \"rating >= 4 and genre == 'Jazz'\")", "")
             layout = _prompt_str("Path extraction layout", "{artist}/{album}") or "{artist}/{album}"

@@ -1,5 +1,25 @@
 # Lattice — Patch Notes
 
+## v4.3.1 (2026-04-13)
+
+---
+
+### Bug Fixes
+- **Album Overcounting Fix:** Resolved an issue where tracks in "Various Artists" or soundtrack directories were being counted as separate albums. All library generation modes (`--library`, `--ai-library`, `--all-wings`, `--ai-wings`) now correctly group tracks by their containing directory.
+- **Improved Metadata Consolidation:** For each directory, the toolkit now automatically determines the most frequent artist, album title, and genre to use for headers, ensuring accurate representation even when track-level tags vary.
+
+---
+
+## v4.3.0 (2026-04-13)
+
+---
+
+### New Features
+- **AI Wings:** Added `--ai-wings` to generate separate, token-efficient library files for each genre. These files hide individual songs and only include Artist, Album, Genre, and Directory Location, making them ideal for large-scale LLM processing or quick library overviews.
+- **TUI Submenu Expansion:** The Library Tree & Exports submenu now includes both "Generate AI wings" and the previously omitted "Generate smart playlist" options.
+
+---
+
 ## v4.2.2 (2026-04-13)
 
 ---

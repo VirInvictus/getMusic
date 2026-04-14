@@ -1,6 +1,6 @@
 # Lattice — Roadmap
 
-What's done, what's next, what's deferred. Sequenced for maximum utility as a standalone library management suite. Updated as of v4.2.0.
+What's done, what's next, what's deferred. Sequenced for maximum utility as a standalone library management suite. Updated as of v4.3.1.
 
 ---
 
@@ -30,6 +30,7 @@ What's done, what's next, what's deferred. Sequenced for maximum utility as a st
 - [x] **Genre Appending** — Optional `--genres` flag to inline genre tags into the library tree.
 - [x] **AI-Readable Export** — Generate a token-efficient, pipe-delimited library dump designed for LLM prompts.
 - [x] **Genre Wings** — Generate separate library `.txt` files for every detected genre in the collection.
+- [x] **AI Wings** — Generate separate, token-efficient AI library files for each genre (Artist | Album | Genre | Location).
 - [x] **Library Statistics** — Generate reports on formats, bitrates, top artists, top genres, and rating distributions.
 - [x] **Playlist Export (.m3u)** — Generate standard `.m3u` playlists from library tree filters (e.g., 5-star only, specific genre).
 - [x] **Smart Playlists** — Dynamic rule-based `.m3u` generation (e.g., "rating >= 4 AND genre == 'Jazz'").

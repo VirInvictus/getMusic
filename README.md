@@ -42,6 +42,7 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 | **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
 | **AI library export** | `--ai-library` | Token-efficient flat export for LLM recommendation prompts |
 | **Genre wings** | `--all-wings` | Generates a separate library tree file for each genre |
+| **AI wings** | `--ai-wings` | Generates separate AI-friendly flat library files per genre |
 | **Smart Playlist** | `--playlist` | Generates an .m3u playlist based on a dynamic rule (e.g. `rating >= 4`) |
 | **Library statistics** | `--stats` | Library-wide statistics: format breakdown, bitrate, ratings, genres, top artists |
 | **FLAC integrity** | `--testFLAC` | Verifies FLAC files using `flac -t` or FFmpeg, reports failures to text |
@@ -106,6 +107,9 @@ lattice --ai-library --output library_ai.txt
 # Generate per-genre library files (one .txt per genre)
 lattice --all-wings --output wings/
 lattice --all-wings --output wings/ --genres
+
+# Generate per-genre AI-friendly library files
+lattice --ai-wings --output wings_ai/
 
 # Library statistics (prints to screen, or --output for file)
 lattice --stats

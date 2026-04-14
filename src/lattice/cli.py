@@ -17,9 +17,11 @@ from lattice.config import (
     DEFAULT_DUPLICATES_OUTPUT,
     DEFAULT_TAG_AUDIT_OUTPUT,
     DEFAULT_BITRATE_AUDIT_OUTPUT,
+    DEFAULT_PLAYLIST_OUTPUT,
 )
 
-from lattice.modes.library import write_music_library_tree, write_ai_library, write_all_wings
+from lattice.modes.library import write_music_library_tree, write_ai_library, write_all_wings, write_ai_wings
+from lattice.modes.playlists import generate_playlist
 from lattice.modes.integrity import run_flac_mode, run_mp3_mode, run_opus_mode, run_wav_mode, run_wma_mode
 from lattice.modes.artwork import run_extract_art, run_missing_art, run_art_quality_audit
 from lattice.modes.audit import run_duplicates, run_tag_audit, run_bitrate_audit
@@ -39,6 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Generate token-efficient library for AI recommendations")
     group.add_argument("--all-wings", dest="all_wings", action="store_true",
                         help="Generate separate library files for each genre")
+    group.add_argument("--ai-wings", dest="ai_wings", action="store_true",
+                        help="Generate separate AI-friendly library files for each genre")
     group.add_argument("--testFLAC", action="store_true", help="Verify FLAC files")
     group.add_argument("--testMP3", action="store_true", help="Verify MP3 files")
     group.add_argument("--testOpus", action="store_true", help="Verify Opus files via FFmpeg decode")
@@ -129,6 +133,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.all_wings:
             outdir = args.output or "wings"
             return write_all_wings(root, outdir, layout=args.layout, quiet=args.quiet, show_genre=args.genres, show_paths=args.paths)
+
+        if args.ai_wings:
+            outdir = args.output or "wings_ai"
+            return write_ai_wings(root, outdir, layout=args.layout, quiet=args.quiet)
 
         if args.testFLAC:
             output = args.output or DEFAULT_FLAC_OUTPUT
