@@ -1,5 +1,16 @@
 # Lattice — Patch Notes
 
+## v4.3.2 (2026-04-14)
+
+---
+
+### Bug Fixes
+- **Retag Tool Overhaul:** Fixed an issue where `retag.py` was duplicating genre tags instead of replacing them. The tool now safely clears APEv2 tags from MP3s, correctly pops all existing standard/custom genre keys across formats, and explicitly forces ID3v1 synchronization to prevent ghost tags in older media players.
+- **Null Byte Sanitization:** Fixed an issue in all library generation modes (`--library`, `--ai-library`, `--ai-wings`, `--all-wings`) where non-legible null bytes (`\x00`) from ID3v2.4 multi-value frames were being printed into the text output. Multiple values (e.g., dual genres) are now properly joined with a slash (`/`).
+- **Wing File Names:** Improved file name generation for `--ai-wings` and `--all-wings` to preserve word boundaries when encountering slashes or special characters (e.g., `Coke_Rap_Midwest_Rap_AI.txt` instead of `Coke_RapMidwest_Rap_AI.txt`).
+
+---
+
 ## v4.3.1 (2026-04-13)
 
 ---

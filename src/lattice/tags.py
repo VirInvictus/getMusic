@@ -43,12 +43,23 @@ def _first_text(val) -> Optional[str]:
         return None
     if isinstance(val, (list, tuple)):
         val = val[0] if val else None
+        
+    # Handle Mutagen ID3 frames which store strings in a .text list
+    if hasattr(val, "text") and isinstance(val.text, list) and val.text:
+        # Join multiple values with a slash instead of mutagen's default null byte
+        val = "/".join(str(v) for v in val.text)
+        
     try:
         if hasattr(val, "value"):
             val = val.value
     except Exception:
         pass
-    return str(val).strip() if val is not None else None
+        
+    if val is not None:
+        # Strip string and explicitly replace any remaining null bytes
+        s = str(val).replace('\x00', '/').strip()
+        return s if s else None
+    return None
 
 def _parse_track_number(val) -> Optional[int]:
     if val is None:

@@ -281,7 +281,7 @@ def write_all_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{albu
 
     for genre_name in sorted(final_wings):
         artist_albums = final_wings[genre_name]
-        safe_name = re.sub(r'[^\w\s-]', '', genre_name).strip().replace(' ', '_')
+        safe_name = re.sub(r'[^\w\s-]', '_', genre_name).strip().replace(' ', '_')
         output = os.path.join(outdir, f"{safe_name}_Library.txt")
         album_count = sum(len(albums) for albums in artist_albums.values())
 
@@ -399,7 +399,7 @@ def write_ai_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{album
 
     for genre_name in sorted(wings):
         albums = sorted(wings[genre_name])
-        safe_name = re.sub(r'[^\w\s-]', '', genre_name).strip().replace(' ', '_')
+        safe_name = re.sub(r'[^\w\s-]', '_', genre_name).strip().replace(' ', '_')
         output = os.path.join(outdir, f"{safe_name}_AI.txt")
 
         if not quiet:
