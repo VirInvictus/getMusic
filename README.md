@@ -197,14 +197,17 @@ The `--extractArt` mode replaces the old standalone `extract_opus_art.py` and `e
 ## Full help output
 
 ```
-usage: lattice [-h] [--version]
-                   [--library | --ai-library | --all-wings | --testFLAC | --testMP3 | --testOpus | --extractArt | --missingArt | --duplicates | --auditTags | --stats]
-                   [--root ROOT] [--output OUTPUT] [--workers WORKERS]
-                   [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--dry-run]
-                   [--only-errors | --no-only-errors] [--ffmpeg FFMPEG]
-                   [--verbose]
+usage: lattice [-h] [--version] [--library | --ai-library | --all-wings | --ai-wings | --testFLAC | --testMP3 | --testOpus | --testWAV |
+               --testWMA | --extractArt | --missingArt | --auditArtQuality | --duplicates | --auditTags | --auditBitrate | --playlist | --stats]
+               [--root ROOT] [--output OUTPUT] [--rule RULE] [--layout LAYOUT] [--min-art-res MIN_ART_RES] [--min-bitrate MIN_BITRATE]
+               [--workers WORKERS] [--prefer {flac,ffmpeg}] [--quiet] [--genres] [--paths] [--dry-run] [--only-errors | --no-only-errors]
+               [--ffmpeg FFMPEG] [--verbose]
+               [pos_root]
 
 Music library toolkit: tree, integrity, art, duplicates, tag audit
+
+positional arguments:
+  pos_root              Root directory (positional fallback)
 
 options:
   -h, --help            show this help message and exit
@@ -212,21 +215,34 @@ options:
   --library             Generate library tree
   --ai-library          Generate token-efficient library for AI recommendations
   --all-wings           Generate separate library files for each genre
+  --ai-wings            Generate separate AI-friendly library files for each genre
   --testFLAC            Verify FLAC files
   --testMP3             Verify MP3 files
   --testOpus            Verify Opus files via FFmpeg decode
+  --testWAV             Verify WAV files via FFmpeg decode
+  --testWMA             Verify WMA files via FFmpeg decode
   --extractArt          Extract embedded cover art to folder
   --missingArt          Report directories missing cover art
+  --auditArtQuality     Report extracted/folder covers below a resolution threshold
   --duplicates          Detect duplicate artist+album across formats
   --auditTags           Report files with incomplete tags
+  --auditBitrate        Report files below a certain bitrate floor
+  --playlist            Generate a smart .m3u playlist based on a rule
   --stats               Library-wide statistics summary
-  --root ROOT           Root directory (default: current)
+  --root ROOT           Root directory (default: read from config or current dir)
   --output OUTPUT       Output path
+  --rule RULE           Smart playlist rule (e.g. "rating >= 4 and genre == 'Jazz'")
+  --layout LAYOUT       Directory structure pattern for extracting tags from path (default: {artist}/{album})
+  --min-art-res MIN_ART_RES
+                        Minimum resolution in pixels for --auditArtQuality (default: 500)
+  --min-bitrate MIN_BITRATE
+                        Minimum bitrate in kbps for --auditBitrate (default: 192)
   --workers WORKERS     Parallel workers (integrity modes)
   --prefer {flac,ffmpeg}
                         Preferred tool (FLAC mode)
   --quiet               Minimize output
   --genres              Include album genres in library tree
+  --paths               Include absolute directory paths at the album level
   --dry-run             Preview changes without writing (extractArt)
   --only-errors, --no-only-errors
                         Write only errors/warns (MP3/Opus modes)

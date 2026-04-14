@@ -9,7 +9,7 @@ from typing import Tuple, List, Optional, Dict, Any
 
 from lattice.utils import run_proc, has_tool, _make_pbar
 from lattice.tags import HAVE_MUTAGEN_MP3, MUTAGEN_MP3
-from lattice.config import DEFAULT_FLAC_OUTPUT, DEFAULT_MP3_OUTPUT, DEFAULT_OPUS_OUTPUT
+from lattice.config import DEFAULT_FLAC_OUTPUT, DEFAULT_MP3_OUTPUT, DEFAULT_OPUS_OUTPUT, DEFAULT_WAV_OUTPUT, DEFAULT_WMA_OUTPUT
 
 # =====================================
 # Mode: FLAC integrity

@@ -16,18 +16,22 @@ from lattice.config import (
     DEFAULT_FLAC_OUTPUT,
     DEFAULT_MP3_OUTPUT,
     DEFAULT_OPUS_OUTPUT,
+    DEFAULT_WAV_OUTPUT,
+    DEFAULT_WMA_OUTPUT,
     DEFAULT_MISSING_ART_OUTPUT,
+    DEFAULT_ART_QUALITY_OUTPUT,
     DEFAULT_DUPLICATES_OUTPUT,
     DEFAULT_TAG_AUDIT_OUTPUT,
+    DEFAULT_BITRATE_AUDIT_OUTPUT,
     DEFAULT_PLAYLIST_OUTPUT,
 )
 
 from lattice.modes.library import write_music_library_tree, write_ai_library, write_all_wings, write_ai_wings
 from lattice.modes.playlists import generate_playlist
 from lattice.modes.stats import run_stats
-from lattice.modes.integrity import run_flac_mode, run_mp3_mode, run_opus_mode
-from lattice.modes.artwork import run_extract_art, run_missing_art
-from lattice.modes.audit import run_duplicates, run_tag_audit
+from lattice.modes.integrity import run_flac_mode, run_mp3_mode, run_opus_mode, run_wav_mode, run_wma_mode
+from lattice.modes.artwork import run_extract_art, run_missing_art, run_art_quality_audit
+from lattice.modes.audit import run_duplicates, run_tag_audit, run_bitrate_audit
 
 # =====================================
 # Curses TUI / Fallbacks
@@ -375,6 +379,8 @@ _MAIN_SECTIONS = [
         "Test FLAC files",
         "Test MP3 files",
         "Test Opus files",
+        "Test WAV files",
+        "Test WMA files",
     ]),
     ("ARTWORK", [
         "Extract cover art",
@@ -384,6 +390,7 @@ _MAIN_SECTIONS = [
     ("METADATA", [
         "Find duplicate albums",
         "Audit tags",
+        "Audit bitrates",
     ]),
     ("SETTINGS", [
         "Change library root",
@@ -664,6 +671,11 @@ def interactive_menu() -> int:
         elif result == (2, 1):
             output = _prompt_str("Output file", DEFAULT_MISSING_ART_OUTPUT) or DEFAULT_MISSING_ART_OUTPUT
             _run_with_capture("Report missing art", run_missing_art, root, output, quiet=False)
+
+        elif result == (2, 2):
+            output = _prompt_str("Output file", DEFAULT_ART_QUALITY_OUTPUT) or DEFAULT_ART_QUALITY_OUTPUT
+            min_res = _prompt_int("Minimum resolution floor", 500)
+            _run_with_capture("Audit art quality", run_art_quality_audit, root, output, min_res, quiet=False)
 
         elif result == (3, 0):
             output = _prompt_str("Output file", DEFAULT_DUPLICATES_OUTPUT) or DEFAULT_DUPLICATES_OUTPUT

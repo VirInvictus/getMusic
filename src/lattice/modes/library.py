@@ -266,12 +266,13 @@ def write_all_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{albu
     album_paths: Dict[Tuple[str, str], str] = {}
     
     for dirpath, data in albums_by_dir.items():
-        genre = data["genre"]
+        genre_str = data["genre"]
         artist = data["artist"]
         album = data["album"]
         songs = data["songs"]
         
-        final_wings[genre][artist][album].extend(songs)
+        for genre in (g.strip() for g in genre_str.split('/') if g.strip()):
+            final_wings[genre][artist][album].extend(songs)
         album_paths[(artist, album)] = dirpath
 
     os.makedirs(outdir, exist_ok=True)

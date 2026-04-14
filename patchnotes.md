@@ -1,5 +1,18 @@
 # Lattice — Patch Notes
 
+## v4.3.4 (2026-04-14)
+
+---
+
+### Bug Fixes
+- **TUI Artwork Submenu:** Restored missing "Audit art quality" option to the interactive TUI menu.
+- **TUI Integrity Submenu:** Added missing "Test WAV files" and "Test WMA files" options to the interactive TUI menu.
+- **TUI Metadata Submenu:** Added missing "Audit bitrates" option to the interactive TUI menu.
+- **WAV/WMA Integrity Modes:** Fixed a crash caused by missing `DEFAULT_WAV_OUTPUT` and `DEFAULT_WMA_OUTPUT` imports during `--testWAV` and `--testWMA` runs.
+- **Genre Split Formatting:** Refined genre splitting logic in `write_all_wings` to correctly extract multiple genres without splitting literal paths or bracketed tags when saving library files.
+
+---
+
 ## v4.3.3 (2026-04-14)
 
 ---
