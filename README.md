@@ -1,23 +1,58 @@
 <p align="center">
   <img src="logo.svg" alt="Lattice" width="420">
 </p>
+
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
   <a href="https://ko-fi.com/vrnvctss"><img src="https://img.shields.io/badge/support-Ko--fi-ff5f5f?logo=kofi" alt="Ko-fi"></a>
 </p>
 
-A CLI toolkit for music collectors who manage their own libraries. Builds text-based library trees, verifies file integrity across formats, extracts and audits cover art, detects duplicates, and reports incomplete metadata — all from a single script.
+---
+
+# Lattice
+
+A high-performance CLI toolkit for music collectors who manage their own libraries. Lattice provides a suite of tools for library visualization, integrity verification, cover art extraction, and metadata auditing — all from a single, zero-dependency script.
 
 ## Why this exists
 
-If you manage a large library (5000+ songs) outside of any particular player's database, you eventually need tools that work the way your library is actually structured. This script expects the standard collector layout:
+Modern music players often hide your library behind proprietary databases. Lattice is built for collectors who treat the filesystem as the source of truth. It reads tags directly via `mutagen`, ensuring your library is portable and player-agnostic.
 
-```
-~/Music/ARTIST NAME/ALBUM NAME/01 - Track.flac
+## Features
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| **Library Tree** | `--library` | Generate a formatted ASCII/Unicode tree of your entire collection. |
+| **AI Library** | `--ai-library` | Token-efficient export designed for LLM recommendation prompts. |
+| **Genre Wings** | `--all-wings` | Generate separate library catalogs segmented by genre. |
+| **Integrity Checks** | `--testFLAC` | Parallel verification of FLAC/MP3/Opus/WAV integrity via FFmpeg. |
+| **Art Extraction** | `--extractArt` | Extract embedded covers with format-priority ranking (FLAC > Opus). |
+| **Tag Audit** | `--auditTags` | Identify and report files with missing or inconsistent metadata. |
+
+## Installation
+
+```bash
+# Recommended: install via pipx for global access
+pipx install .
+
+# Or run from source
+python -m lattice --stats
 ```
 
-It reads tags directly via [mutagen](https://mutagen.readthedocs.io/) — player-agnostic by design. Ratings are pulled from standard tag fields (POPM, TXXX, Vorbis comments). I use foobar2000's `foo_quicktag` component with keyboard shortcuts to set `%rating%` between 1 and 5, but any tagger that writes to standard fields will work.
+## Development & Testing
+
+Lattice is architected as a modular Python package.
+
+### Architecture
+- `tags.py`: Unified abstraction layer for format-agnostic metadata extraction.
+- `modes/`: Discrete implementation of auditing and visualization logic.
+- `tui.py`: Full-screen curses interface for interactive maintenance.
+
+### Verification
+To run the internal verification suite:
+```bash
+python3 -m unittest discover src/lattice/test
+```
 
 ## Sample output
 
