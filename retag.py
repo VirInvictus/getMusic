@@ -6,29 +6,49 @@ import mutagen
 from mutagen.easyid3 import EasyID3
 from mutagen.mp4 import MP4
 
-AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.wav', '.wma', '.aac'}
+# Dropped wav, wma, and bare aac to match the handled logic
+AUDIO_EXTENSIONS = {'.mp3', '.flac', '.ogg', '.opus', '.m4a', '.mp4'}
 
 def apply_genres(filepath: str, new_genres: list) -> bool:
     ext = os.path.splitext(filepath)[1].lower()
     try:
         if ext == '.mp3':
+            # Remove APEv2 tags if present (they often cause conflicting dual-genres)
+            try:
+                from mutagen.apev2 import APEv2
+                APEv2(filepath).delete()
+            except Exception:
+                pass
+
             try:
                 audio = EasyID3(filepath)
             except mutagen.id3.ID3NoHeaderError:
                 audio = mutagen.File(filepath, easy=True)
                 audio.add_tags()
+            
+            audio.pop("genre", None)
             audio["genre"] = new_genres
-            audio.save()
+            # Force v2.3 for widespread player compatibility, sync v1 tags
+            audio.save(v2_version=3, v1=2)
 
         elif ext in ['.flac', '.opus', '.ogg']:
             audio = mutagen.File(filepath)
             if audio is None:
                 return False
+            # Vorbis comments natively support multiple tags with the same name.
+            # Clear existing genres first (handling both case variations)
+            audio.pop("genre", None)
+            audio.pop("GENRE", None)
+            # Passing a list creates multiple 'GENRE' tags perfectly.
             audio["genre"] = new_genres
             audio.save()
 
-        elif ext in ['.m4a', '.mp4', '.aac']:
+        elif ext in ['.m4a', '.mp4']:
             audio = MP4(filepath)
+            # Clear existing standard (gnre) and custom (\xa9gen) genres
+            audio.pop("gnre", None)
+            audio.pop("\xa9gen", None)
+            # Mutagen expects a list of strings for the custom genre atom
             audio["\xa9gen"] = new_genres
             audio.save()
             
