@@ -386,11 +386,12 @@ def write_ai_wings(root_dir: str, outdir: str, *, layout: str = "{artist}/{album
         best_album = max(data["albums"], key=data["albums"].get) if data["albums"] else "Unknown Album"
         
         if data["genres"]:
-            album_genre = max(data["genres"], key=data["genres"].get)
+            album_genre_str = max(data["genres"], key=data["genres"].get)
         else:
-            album_genre = "Uncategorized"
+            album_genre_str = "Uncategorized"
         
-        wings[album_genre].append((best_artist, best_album, album_genre, dirpath))
+        for album_genre in (g.strip() for g in album_genre_str.split('/') if g.strip()):
+            wings[album_genre].append((best_artist, best_album, album_genre, dirpath))
 
     os.makedirs(outdir, exist_ok=True)
 

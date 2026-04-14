@@ -1,5 +1,14 @@
 # Lattice — Patch Notes
 
+## v4.3.3 (2026-04-14)
+
+---
+
+### New Features
+- **Dual-Genre Wing Splitting:** The `--ai-wings` and `--all-wings` modes now intelligently split dual-tagged items (e.g., `Coke Rap/Midwest Rap`). Instead of creating a single, combined `.txt` file for the multi-genre string, Lattice now separates the genres and correctly filters the album into *both* respective genre text files, ensuring accurate categorization across the library.
+
+---
+
 ## v4.3.2 (2026-04-14)
 
 ---
