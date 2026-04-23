@@ -268,6 +268,15 @@ options:
   --verbose             Verbose output
 ```
 
+## Credits & Acknowledgements
+
+Lattice is built upon several excellent open-source libraries and tools:
+
+- **[Mutagen](https://github.com/quodlibet/mutagen)** — Handles all audio metadata extraction and tagging logic.
+- **[tqdm](https://github.com/tqdm/tqdm)** — Powers the extensible progress bars for library scanning and integrity checks.
+- **[FFmpeg](https://ffmpeg.org/)** — The heavy lifter for multi-format audio decoding and integrity verification.
+- **[FLAC](https://xiph.org/flac/)** — Used for high-speed native FLAC verification.
+
 ## Support
 
 If this saved you time, consider [buying me a coffee](https://ko-fi.com/vrnvctss).
