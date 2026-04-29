@@ -279,4 +279,5 @@ Lattice is built upon several excellent open-source libraries and tools:
 
 ## Support
 
+Support me by donating bitcoin (even a coffee would help):  
 bc1qkge6zr45tzqfwfmvma2ylumt6mg7wlwmhr05yv
