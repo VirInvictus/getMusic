@@ -12,7 +12,7 @@
 
 # Lattice
 
-A high-performance CLI toolkit for music collectors who manage their own libraries. Lattice provides a suite of tools for library visualization, integrity verification, cover art extraction, and metadata auditing — all from a single, zero-dependency script.
+A high-performance CLI/TUI toolkit for music collectors who manage their own libraries. Lattice provides a suite of tools for library visualization, integrity verification, cover art extraction, and metadata auditing — built on `mutagen` and `tqdm`, with `flac` and `ffmpeg` shelled out for integrity checks.
 
 ## Why this exists
 
@@ -37,12 +37,6 @@ Lattice is architected as a modular Python package.
 - `tags.py`: Unified abstraction layer for format-agnostic metadata extraction.
 - `modes/`: Discrete implementation of auditing and visualization logic.
 - `tui.py`: Full-screen curses interface for interactive maintenance.
-
-### Verification
-To run the internal verification suite:
-```bash
-python3 -m unittest discover src/lattice/test
-```
 
 ## Sample output
 
