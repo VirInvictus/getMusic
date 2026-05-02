@@ -21,42 +21,6 @@ Modern music players often hide your library behind proprietary databases. Latti
 
 | Mode | Flag | Description |
 |------|------|-------------|
-| **Library Tree** | `--library` | Generate a formatted ASCII/Unicode tree of your entire collection. |
-| **AI Library** | `--ai-library` | Token-efficient export designed for LLM recommendation prompts. |
-| **Genre Wings** | `--all-wings` | Generate separate library catalogs segmented by genre. |
-| **Integrity Checks** | `--testFLAC` | Parallel verification of FLAC/MP3/Opus/WAV integrity via FFmpeg. |
-| **Art Extraction** | `--extractArt` | Extract embedded covers with format-priority ranking (FLAC > Opus). |
-| **Tag Audit** | `--auditTags` | Identify and report files with missing or inconsistent metadata. |
-
-## Development & Testing
-
-Lattice is architected as a modular Python package.
-
-### Architecture
-- `tags.py`: Unified abstraction layer for format-agnostic metadata extraction.
-- `modes/`: Discrete implementation of auditing and visualization logic.
-- `tui.py`: Full-screen curses interface for interactive maintenance.
-
-## Sample output
-
-```
-ARTIST: Ólafur Arnalds
-  ├── ALBUM: Found Songs (Neo-Classical)
-      ├── SONG: 01. Ólafur Arnalds — Erla's Waltz (flac) [★★★★★ 5.0/5]
-      ├── SONG: 02. Ólafur Arnalds — Raein (flac) [★★★★★ 5.0/5]
-      ├── SONG: 03. Ólafur Arnalds — Romance (flac) [★★★★★ 5.0/5]
-      ├── SONG: 04. Ólafur Arnalds — Allt varð hljótt (flac) [★★★★★ 5.0/5]
-      ├── SONG: 05. Ólafur Arnalds — Lost Song (flac) [★★★★★ 5.0/5]
-      ├── SONG: 06. Ólafur Arnalds — Faun (flac) [★★★★★ 5.0/5]
-      └── SONG: 07. Ólafur Arnalds — Ljósið (flac) [★★★★★ 5.0/5]
-```
-
-Genre tags are optional (`--genres`). If your genre metadata is inconsistent, leave them off — the tree gets unwieldy fast.
-
-## Features
-
-| Mode | Flag | Description |
-|------|------|-------------|
 | **Library tree** | `--library` | Builds a formatted text tree with artist/album/track/rating/genre |
 | **AI library export** | `--ai-library` | Token-efficient flat export for LLM recommendation prompts |
 | **Genre wings** | `--all-wings` | Generates a separate library tree file for each genre |
@@ -77,6 +41,30 @@ Genre tags are optional (`--genres`). If your genre metadata is inconsistent, le
 | **Version** | `--version` | Prints version and exits |
 
 Running with no arguments launches an interactive TUI — a full-screen curses interface with arrow-key navigation, color-coded section groups (Library, Integrity, Artwork, Metadata), and a highlighted selection cursor. Menus, parameter prompts, and pause screens all render inside styled Unicode boxes for a consistent experience. Library tree, AI export, and genre wings live in a dedicated submenu. Falls back to typed input if curses is unavailable.
+
+## Sample output
+
+```
+ARTIST: Ólafur Arnalds
+  ├── ALBUM: Found Songs (Neo-Classical)
+      ├── SONG: 01. Ólafur Arnalds — Erla's Waltz (flac) [★★★★★ 5.0/5]
+      ├── SONG: 02. Ólafur Arnalds — Raein (flac) [★★★★★ 5.0/5]
+      ├── SONG: 03. Ólafur Arnalds — Romance (flac) [★★★★★ 5.0/5]
+      ├── SONG: 04. Ólafur Arnalds — Allt varð hljótt (flac) [★★★★★ 5.0/5]
+      ├── SONG: 05. Ólafur Arnalds — Lost Song (flac) [★★★★★ 5.0/5]
+      ├── SONG: 06. Ólafur Arnalds — Faun (flac) [★★★★★ 5.0/5]
+      └── SONG: 07. Ólafur Arnalds — Ljósið (flac) [★★★★★ 5.0/5]
+```
+
+Genre tags are optional (`--genres`). If your genre metadata is inconsistent, leave them off — the tree gets unwieldy fast.
+
+## Architecture
+
+Lattice is a modular Python package:
+
+- `tags.py` — unified abstraction layer for format-agnostic metadata extraction.
+- `modes/` — per-mode implementation of auditing and visualization logic.
+- `tui.py` — full-screen curses interface for interactive maintenance.
 
 ## Installation & Requirements
 
