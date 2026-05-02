@@ -5,7 +5,6 @@
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://ko-fi.com/vrnvctss"><img src="https://img.shields.io/badge/support-Ko--fi-ff5f5f?logo=kofi" alt="Ko-fi"></a>
 </p>
 
 ---
@@ -273,5 +272,8 @@ Lattice is built upon several excellent open-source libraries and tools:
 
 ## Support
 
-Support me by donating bitcoin (even a coffee would help):  
+If Lattice's useful to you and you'd like to chip in:
+
+```
 bc1qkge6zr45tzqfwfmvma2ylumt6mg7wlwmhr05yv
+```
