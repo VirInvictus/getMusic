@@ -63,9 +63,16 @@ Progress reporting goes through `utils._make_pbar`, which dispatches between thr
 
 `AUDIO_EXTENSIONS` in `config.py` is the canonical set of supported formats — extend it there, not inline. `COVER_NAMES` is matched case-insensitively (see `utils._has_cover_file`); add new variants there.
 
-## Companion script
+## Companion scripts
 
-`retag.py` at the repo root is a standalone genre-rewriter, **not** part of the `lattice` package and not exposed through the CLI. It's intentionally separate because it writes tags (Lattice itself is read-only — see spec.md §5). Don't fold it into the package without asking.
+Two standalone helpers live at the repo root, **not** part of the `lattice` package and not exposed through the CLI. They exist as siblings because each one mutates state in a way the read-only package contract (spec.md §5) forbids. Don't fold either into the `lattice` package without asking.
+
+- **`retag.py`** — universal genre rewriter. Writes tags via `mutagen`, abstracting per-container differences (ID3, Vorbis, Apple atoms). Designed to consume the `--all-wings --paths` output one album at a time.
+- **`cleaner.py`** — fragmented-album folder consolidator. When import metadata varies across sources (curly vs straight apostrophe in album titles, en-dash vs hyphen in artist names, casing variants), the same album lands in two sibling folders with no track overlap. `cleaner.py` walks the library, finds folders whose names normalize to the same key (curly→straight quotes, dash variants→ASCII hyphen, NFKC, lowercase, strip), picks the larger as canonical, and merges the rest in via `shutil.move`. Audio collisions where sizes differ are kept under a `.from-fragment` suffix — never auto-deleted. Has a `--dry-run` flag and per-file logging to `<directory>/cleanup.log` by default. Idempotent.
+
+**Relationship to `--duplicates`.** The package's `--duplicates` mode is **detection-only** — it reports same-`artist+album` appearances across multiple directories or formats and writes a text report. `cleaner.py` is the **destructive companion** for the specific subset of duplicates that are quote-/dash-/case-variant artifacts of the same folder name. `cleaner.py` does not key off tags; it only matches folder names, so the operation is auditable from the log alone. The two are complementary: run `--duplicates` first to see what's going on, then run `cleaner.py --dry-run` to preview the safe subset, then apply.
+
+**Pattern for future destructive helpers.** If you add another mutating sibling at the repo root, follow the same shape: positional `directory` arg matching `retag.py`, `--dry-run` short-circuiting all destructive ops through a single guard layer, append-only timestamped log to a sensible default path with `--log` override, idempotent on re-run, narrow scope. Document it in README.md under its own "Companion Script: `<name>.py`" section, add a dated entry in `patchnotes.md` (no version bump — the package didn't change), and add a bullet here.
 
 ## Conventions for this repo
 

@@ -1,5 +1,13 @@
 # Lattice — Patch Notes
 
+## Repo addition (2026-05-04)
+
+---
+
+**Companion Script: `cleaner.py`.** Added a standalone consolidator for fragmented album folders to the repository. It detects sibling directories whose names differ only in quote rendering (`'` vs `'`), dash/hyphen variant, case, or whitespace — the typical artifact of inconsistent metadata across import sources — and merges them via filesystem `mv` only. Audio collisions where sizes differ keep both copies (source renamed with a `.from-fragment` suffix), never overwriting user audio. Includes a `--dry-run` preview mode and per-file logging to `<directory>/cleanup.log`. Intentionally narrow scope: it does not rewrite tags or re-encode audio. Lives outside the `lattice` package alongside `retag.py`, preserving the package's read-only contract.
+
+---
+
 ## v4.3.4 (2026-04-14)
 
 ---

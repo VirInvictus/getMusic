@@ -176,6 +176,48 @@ Audio metadata formats handle multiple genres entirely differently (ID3 uses nul
    ```bash
    ./retag.py "/mnt/SharedData/Music/Kanye West/Yeezus" "Alternative Rap" "Industrial"
 
+## Companion Script: `cleaner.py`
+
+Also included is `cleaner.py`, a one-shot consolidator for **album folders that have fragmented across two paths because of inconsistent metadata**. The pattern looks like this:
+
+```
+Music/Modern Baseball/You're Gonna Miss It All/   ← 3 mp3s (straight quote)
+Music/Modern Baseball/You’re Gonna Miss It All/   ← 3 opus (curly quote)
+```
+
+Same album, no track overlap, scattered between two folders by filesystem accident. The same artifact shows up at the artist level (`Jay-Z & Kanye West/` vs `JAY‐Z & Kanye West/` — different hyphen codepoints) and across casing variants (`BONES/` vs `Bones/`).
+
+`cleaner.py` walks the library, finds every sibling pair of folders whose names normalize to the same key (after folding curly→straight quotes, en/em-dashes→ASCII hyphen, NFKC, lowercase, strip), and merges the smaller into the larger.
+
+**Safety contract.**
+- **`mv` only** on the same filesystem — atomic rename, audio bytes are never read or rewritten.
+- **Audio collisions never auto-delete.** If a track of the same name exists in both folders with *different* file sizes, the source copy is kept under a `<stem>.from-fragment.<ext>` suffix instead of being overwritten. Identical-size copies (true duplicates) are dropped from the source.
+- **Non-audio collisions** (`cover.jpg`, `.nfo`, etc.) drop the source — the canonical folder's copy wins.
+- **Conservative matching.** Only sibling folders whose normalized names match are merged. Cases like `Domestica` vs `Cursive's Domestica (Deluxe Edition)` (different prefix, not just quote variation) are left alone for manual review.
+- **`--dry-run` flag** previews every move without touching the filesystem; log lines are prefixed `[DRY]`.
+- **Per-file logging** to `<directory>/cleanup.log` (or `--log` override) — every move, drop, collision, and `rmdir` is timestamped and audit-trailed.
+- **Idempotent** — running on an already-clean library is a no-op.
+
+**The Workflow:**
+1. Preview first:
+   ```bash
+   ./cleaner.py /mnt/SharedData/Music --dry-run
+   ```
+2. Inspect `/mnt/SharedData/Music/cleanup.log` — every action it would take is recorded with `[DRY]` prefixes.
+3. If the plan looks right, apply for real:
+   ```bash
+   ./cleaner.py /mnt/SharedData/Music
+   ```
+4. Re-run `lattice --duplicates` afterward to confirm the consolidated state.
+
+**Two passes.** Pass 1 collapses artist-folder duplicates (e.g., merges `JAY‐Z & Kanye West/` into `Jay-Z & Kanye West/`). Pass 2 then runs album-level consolidation inside each artist folder. The order matters — collapsing the artist split first means album-level matching can find pairs that would otherwise be hidden under the duplicate artist directory.
+
+**What it does not do.** `cleaner.py` is intentionally narrow. It does not:
+- Rewrite tags (use `retag.py` for that)
+- Re-encode or transcode audio (filesystem operations only)
+- Match albums by tag content (folder name only — by design, so the operation is auditable from the log alone)
+- Touch the source-of-truth import pipeline. If the same fragmentation pattern keeps reappearing, the upstream tagger or downloader needs a curly-quote normalization rule.
+
 ## Library statistics
 
 The `--stats` mode produces a full library report: file counts, total size and duration, format breakdown with per-format sizes, bitrate summary (with low-quality flagging), rating distribution with bar charts, top genres, and top artists by track count. Prints to screen by default, or `--output` to save.
