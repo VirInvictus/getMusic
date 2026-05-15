@@ -51,7 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument("--extractArt", action="store_true", help="Extract embedded cover art to folder")
     group.add_argument("--missingArt", action="store_true", help="Report directories missing cover art")
     group.add_argument("--auditArtQuality", action="store_true", help="Report extracted/folder covers below a resolution threshold")
-    group.add_argument("--duplicates", action="store_true", help="Detect duplicate artist+album across formats")
+    group.add_argument("--duplicates", action="store_true", help="Four-section dupe report: exact albums, within-folder multi-format, similar names, track-level")
     group.add_argument("--auditTags", action="store_true", help="Report files with incomplete tags")
     group.add_argument("--auditBitrate", action="store_true", help="Report files below a certain bitrate floor")
     group.add_argument("--playlist", action="store_true", help="Generate a smart .m3u playlist based on a rule")
@@ -72,18 +72,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", dest="dry_run", action="store_true",
                     help="Preview changes without writing (extractArt)")
 
-    # MP3/Opus specific
-    try:
-        BooleanFlag = argparse.BooleanOptionalAction
-    except AttributeError:
-        BooleanFlag = None  # type: ignore
-
-    if BooleanFlag:
-        p.add_argument("--only-errors", dest="only_errors", action=BooleanFlag, default=True,
-                        help="Write only errors/warns (MP3/Opus modes)")
-    else:
-        p.add_argument("--only-errors", dest="only_errors", action="store_true", default=True,
-                        help="Write only errors/warns (MP3/Opus modes)")
+    p.add_argument("--only-errors", dest="only_errors",
+                   action=argparse.BooleanOptionalAction, default=True,
+                   help="Write only errors/warns (MP3/Opus modes)")
 
     p.add_argument("--ffmpeg", default=None, help="Path to ffmpeg")
     p.add_argument("--verbose", action="store_true", help="Verbose output")

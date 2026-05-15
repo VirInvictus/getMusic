@@ -1,7 +1,7 @@
 # Lattice — Application Specification
 
-**Version:** 4.3.4  
-**Language:** Python 3.9+  
+**Version:** 4.4.0  
+**Language:** Python 3.14+  
 **Dependencies:** mutagen, tqdm  
 **License:** MIT
 
@@ -78,7 +78,7 @@ scripting and automation. All modes accept `--root`, `--output`, `--workers`,
 | Opus integrity | `--testOpus` | Decode via FFmpeg, report errors/warnings |
 | Cover extraction | `--extractArt` | Extract embedded art with format priority ranking |
 | Missing art | `--missingArt` | Report directories with no cover art |
-| Duplicates | `--duplicates` | Detect same artist+album across directories/formats |
+| Duplicates | `--duplicates` | Four-section report: exact album dupes (cross-directory), within-folder multi-format pairs, fuzzy similar-name candidates, and track-level cross-library duplicates filtered by duration |
 | Tag audit | `--auditTags` | Report files missing title, artist, track number, or genre |
 
 ---

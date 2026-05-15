@@ -1,5 +1,25 @@
 # Lattice — Patch Notes
 
+## v4.4.0 (2026-05-14)
+
+---
+
+### New Features
+- **Expanded `--duplicates`:** The duplicate detection mode was rewritten to emit a four-section report instead of a single album-level list. Section 1 (exact album duplicates) continues to flag the same artist/album pair across multiple directories, but now aggregates the most-common artist and album across every track in the folder rather than sampling the first audio file; per-location lines include the format breakdown, average bitrate, and total size to support keep/discard decisions. Section 2 (within-directory multi-format) reports folders that hold the same track in two or more formats (e.g., `01 - Track.flac` next to `01 - Track.mp3`), listed track-by-track so partial overlaps stay visible. Section 3 (similar-name candidates) flags within-artist album pairs whose names match at a `difflib` ratio of 0.85 or higher after stripping trailing parentheticals (`(Deluxe Edition)`, `(Remastered)`) and `feat.` clauses; this catches cases like `Domestica` vs `Domestica (Deluxe Edition)` that exact matching misses. Section 4 (track-level duplicates) reports the same artist + title appearing in two or more directories, partitioned into duration-clusters within a 2-second window so a studio cluster and a live cluster for the same song surface as separate rows instead of being lumped together (or one of them silently dropped).
+- **Quote / dash normalization in matching:** Album and artist keys now apply NFKC normalization plus the same curly-quote and dash-variant fold table that `cleaner.py` uses (`'` → `'`, `‐` / `–` / `—` → `-`, etc.). `JAY‐Z` and `Jay-Z` collapse to the same key, so the two are reported together instead of slipping past as separate albums.
+
+### Requirements
+- **Minimum Python is now 3.14.** Lattice was previously declared `>=3.9`. The bump is for runtime quality, not language sugar: end users get faster CLI cold starts (cumulative ~25% startup improvement since 3.11, with continued specializing-interpreter gains through 3.14), fine-grained tracebacks (PEP 657) so tag-read or subprocess failures point at the exact column rather than just the line, and faster general bytecode performance from the 3.11+ specializing interpreter. No 3.14-specific language features (template strings, free-threading, tail-call interpreter, etc.) were adopted because they either require a non-default build or have no use case in Lattice's read-walk-report workload.
+
+### Bug Fixes
+- **`run_duplicates` first-file bias:** Reading album/artist tags from only the first audio file in a directory would mis-key entire folders when track 1 had bad tags, was a hidden track, or the album was a compilation with per-track artists. The new aggregation reads tags from every file and takes the mode across the directory.
+- **Empty-album false positives:** The exact-duplicate section accepted directories with an empty album key (e.g., singles or weirdly tagged folders), grouping every album-less folder for an artist together as "duplicates." Both `norm_artist` and `norm_album` are now required to be non-empty for inclusion in the exact group.
+- **Multi-format display title lowercasing:** When tracks lacked title tags, the within-folder multi-format section fell back to the normalized lookup key for display, which had been lowercased. Filename stems are now carried alongside the key and used as the display fallback, so case is preserved.
+- **Track-level cluster dropping:** Track-level dupe detection previously returned only the single largest duration cluster per `(artist, title)` key, silently discarding a second valid cluster when the same title legitimately existed as both a studio version (in two albums) and a live version (in two more). Replaced with a partitioning helper that returns every cluster with 2+ entries spanning 2+ directories.
+- **Removed dead code:** `_DirInfo.track_count` was computed but never read; removed. `_fmt_size` had an unreachable final `return` after a loop that always returned in its last iteration; loop refactored to only iterate over B/KB/MB with GB as the natural fallthrough. `argparse.BooleanOptionalAction` fallback in `cli.py` predates 3.9 and was dead even at the prior 3.9 floor; removed.
+
+---
+
 ## Repo addition (2026-05-04)
 
 ---

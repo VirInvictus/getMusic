@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python 3.9+"></a>
+  <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.14%2B-blue" alt="Python 3.14+"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
 </p>
 
@@ -35,7 +35,7 @@ Modern music players often hide your library behind proprietary databases. Latti
 | **Cover art extraction** | `--extractArt` | Extracts embedded art to `cover.jpg` with format priority ranking |
 | **Missing art report** | `--missingArt` | Lists directories with no cover art (folder or embedded) to text |
 | **Art quality audit** | `--auditArtQuality` | Reports extracted/folder covers below a resolution threshold |
-| **Duplicate detection** | `--duplicates` | Finds same artist+album appearing across multiple directories/formats |
+| **Duplicate detection** | `--duplicates` | Four-section report: exact album dupes across directories, within-folder multi-format pairs, fuzzy similar-name candidates, and track-level dupes filtered by duration |
 | **Tag audit** | `--auditTags` | Reports files missing title, artist, track number, or genre to text |
 | **Bitrate audit** | `--auditBitrate` | Reports files falling below a minimum bitrate floor |
 | **Version** | `--version` | Prints version and exits |
@@ -132,7 +132,7 @@ lattice --extractArt --dry-run
 # Report directories missing cover art
 lattice --missingArt --output missing_art.txt
 
-# Find duplicate albums across formats
+# Find duplicates: exact, multi-format, similar-name, track-level
 lattice --duplicates --output duplicates.txt
 
 # Audit tags for missing metadata
@@ -265,7 +265,7 @@ options:
   --extractArt          Extract embedded cover art to folder
   --missingArt          Report directories missing cover art
   --auditArtQuality     Report extracted/folder covers below a resolution threshold
-  --duplicates          Detect duplicate artist+album across formats
+  --duplicates          Detect duplicates: exact albums, within-folder multi-format, similar names, track-level
   --auditTags           Report files with incomplete tags
   --auditBitrate        Report files below a certain bitrate floor
   --playlist            Generate a smart .m3u playlist based on a rule
